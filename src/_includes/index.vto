@@ -49,57 +49,32 @@ noindex: true
     <div class="text-center max-w-4xl mx-auto">
       <!-- Logo/Title -->
       <h1 class="text-6xl md:text-8xl font-bold mb-8 animate-fade-in-up bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-        ZENPRE
+        {{ title }}
       </h1>
       
       <!-- Subtitle -->
       <h2 class="text-2xl md:text-4xl font-semibold mb-16 animate-fade-in-up delay-100">
-        AI時代のプレゼンツール
+        {{ subtitle }}
       </h2>
       
       <!-- Feature List -->
       <div class="space-y-8 text-left max-w-3xl mx-auto">
-        <div class="flex items-start gap-4 animate-slide-in-left delay-200">
+        {{ for feature of features }}
+        <div class="flex items-start gap-4 animate-slide-in-left delay-{{ 200 + (comp.index * 100) }}">
           <div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-content font-bold">
-            1
+            {{ comp.index + 1 }}
           </div>
           <p class="text-lg md:text-xl leading-relaxed">
-            横長レイアウトはもう古い、スマホネイティブの縦長プレゼン
+            {{ feature }}
           </p>
         </div>
-        
-        <div class="flex items-start gap-4 animate-slide-in-left delay-300">
-          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-content font-bold">
-            2
-          </div>
-          <p class="text-lg md:text-xl leading-relaxed">
-            PDF 不要、 markdown を直接プレゼン、 AI フレンドリ
-          </p>
-        </div>
-        
-        <div class="flex items-start gap-4 animate-slide-in-left delay-400">
-          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-content font-bold">
-            3
-          </div>
-          <p class="text-lg md:text-xl leading-relaxed">
-            聴衆からのリアクションをリアルタイムにキャッチできる
-          </p>
-        </div>
-        
-        <div class="flex items-start gap-4 animate-slide-in-left delay-500">
-          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-content font-bold">
-            4
-          </div>
-          <p class="text-lg md:text-xl leading-relaxed">
-            MCP 対応でお手元のAIエージェントから一発準備完了
-          </p>
-        </div>
+        {{ /for }}
       </div>
       
       <!-- CTA Button -->
       <div class="mt-16 animate-fade-in-up delay-600">
         <a href="/posts/" class="btn btn-primary btn-lg text-lg px-8">
-          始める
+          {{ cta_text }}
         </a>
       </div>
     </div>

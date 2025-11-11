@@ -1,1 +1,9 @@
 layout: index.vto
+title: ZENPRE
+subtitle: AI時代のプレゼンツール
+features:
+  - 横長レイアウトはもう古い、スマホネイティブの縦長プレゼン
+  - PDF 不要、 markdown を直接プレゼン、 AI フレンドリ
+  - 聴衆からのリアクションをリアルタイムにキャッチできる
+  - MCP 対応でお手元のAIエージェントから一発準備完了
+cta_text: 始める
