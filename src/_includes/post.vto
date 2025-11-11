@@ -1,0 +1,12 @@
+---
+layout: layout.vto
+---
+<main class="m-6">
+  <p class="text-sm text-gray-500">
+    <time datetime="{{ published }}">{{ published |> date("y年M月d日") }}</time>
+  </p>
+  <h1 class="text-5xl font-bold my-4">{{ title }}</h1>
+  <div class="prose">
+    {{ content |> md }}
+  </div>
+</main>

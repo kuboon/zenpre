@@ -1,0 +1,9 @@
+description: fixme src/_data.yml#description
+metas:
+  site: CMSデモサイト
+  lang: ja
+  twitter: "@kuboon"
+  generator: true
+  title: "=title"
+  description: "=description"
+layout: layout.vto

@@ -1,0 +1,32 @@
+---
+layout: layout.vto
+url: /
+title: top
+noindex: true
+---
+<main data-pagefind-ignore="all">
+  <div
+    class="hero min-h-screen"
+    style="background-image: url(https://img.daisyui.com/images/stock/photo-1507358522600-9f71e620c44e.webp)"
+  >
+    <div class="hero-overlay"></div>
+    <div class="hero-content text-neutral-content text-center">
+      <div class="max-w-md">
+        <h1 class="mb-5 text-5xl font-bold">{{ hero.title }}</h1>
+        <div class="mb-5 prose">{{ hero.content |> md }}</div>
+      </div>
+    </div>
+  </div>
+  <ul id="timeline" class="flex">
+    {{ for entry of search.pages("type=post", "date=desc") }}
+      <div class="card card-border bg-base-100 w-96 m-5">
+        <div class="card-body">
+          <a href="{{entry.url}}" class="after:absolute after:inset-0">
+            <h2 class="card-title">{{ entry.title }}</h2>
+            <p>{{ entry.published |> date("y年M月d日") }}</p>
+          </a>
+        </div>
+      </div>
+    {{ /for }}
+  </ul>
+</main>

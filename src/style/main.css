@@ -1,0 +1,40 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@plugin "daisyui@5.0.50" {
+  themes: retro, valentine;
+}
+
+@plugin "daisyui/theme/index.js" {
+  name: "green";
+  default: true;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: oklch(97% 0.021 166.113);
+  --color-base-200: oklch(95% 0.052 163.051);
+  --color-base-300: oklch(90% 0.093 164.15);
+  --color-base-content: oklch(37% 0.077 168.94);
+  --color-primary: oklch(69% 0.17 162.48);
+  --color-primary-content: oklch(97% 0.021 166.113);
+  --color-secondary: oklch(0% 0 0);
+  --color-secondary-content: oklch(100% 0 0);
+  --color-accent: oklch(76% 0.188 70.08);
+  --color-accent-content: oklch(98% 0.022 95.277);
+  --color-neutral: oklch(26% 0.051 172.552);
+  --color-neutral-content: oklch(97% 0.021 166.113);
+  --color-info: oklch(68% 0.169 237.323);
+  --color-info-content: oklch(97% 0.013 236.62);
+  --color-success: oklch(69% 0.17 162.48);
+  --color-success-content: oklch(97% 0.021 166.113);
+  --color-warning: oklch(79% 0.184 86.047);
+  --color-warning-content: oklch(98% 0.026 102.212);
+  --color-error: oklch(63% 0.237 25.331);
+  --color-error-content: oklch(97% 0.013 17.38);
+  --radius-selector: 0.5rem;
+  --radius-field: 0rem;
+  --radius-box: 0.25rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 1;
+}
