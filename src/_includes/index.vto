@@ -59,10 +59,9 @@ noindex: true
       
       <!-- Feature List -->
       <div class="space-y-8 text-left max-w-3xl mx-auto">
-        {{ for feature of features }}
-        <div class="flex items-start gap-4 animate-slide-in-left delay-{{ 200 + (comp.index * 100) }}">
+        {{ for index, feature of features }}
+        <div class="flex items-start gap-4 animate-slide-in-left delay-{{ 200 + (index * 100) }}">
           <div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-content font-bold">
-            {{ comp.index + 1 }}
           </div>
           <p class="text-lg md:text-xl leading-relaxed">
             {{ feature }}
