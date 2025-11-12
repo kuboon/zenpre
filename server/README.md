@@ -25,6 +25,21 @@ deno task server
 
 The server will start on `http://localhost:8000`.
 
+## Running Tests
+
+```bash
+# In one terminal, start the server
+deno task server
+
+# In another terminal, run the tests
+deno task server:test
+```
+
+Or use the provided test script that handles server startup:
+```bash
+deno run --allow-net --unsafely-ignore-certificate-errors server/test.ts
+```
+
 ## API Endpoints
 
 ### Root

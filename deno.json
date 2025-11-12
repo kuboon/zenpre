@@ -19,6 +19,10 @@
     "server:client": {
       "description": "Run the RPC client example",
       "command": "deno run --allow-net --unsafely-ignore-certificate-errors server/client.ts"
+    },
+    "server:test": {
+      "description": "Run server tests (requires server to be running)",
+      "command": "deno run --allow-net --unsafely-ignore-certificate-errors server/test.ts"
     }
   },
   "compilerOptions": {
