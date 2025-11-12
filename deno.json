@@ -11,6 +11,14 @@
     "serve": {
       "description": "Run and serve the site for development",
       "command": "deno task lume -s"
+    },
+    "server": {
+      "description": "Run the Hono.js server",
+      "command": "deno run --allow-net --allow-env --unsafely-ignore-certificate-errors server/main.ts"
+    },
+    "server:client": {
+      "description": "Run the RPC client example",
+      "command": "deno run --allow-net --unsafely-ignore-certificate-errors server/client.ts"
     }
   },
   "compilerOptions": {
