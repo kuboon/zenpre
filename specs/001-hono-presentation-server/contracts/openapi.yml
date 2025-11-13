@@ -1,0 +1,233 @@
+openapi: 3.0.3
+info:
+  title: Real-time Presentation Server API
+  description: WebSocket-based presentation sharing with HMAC authentication
+  version: 1.0.0
+  contact:
+    name: ZenPre Development Team
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.zenpre.com
+    description: Production server
+
+paths:
+  /api/topics:
+    post:
+      summary: Create new presentation topic
+      description: Generates unique topic ID and authentication secret for presentation session
+      operationId: createTopic
+      responses:
+        '200':
+          description: Topic created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicCreated'
+        '500':
+          description: Server error during topic creation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/topics/{topicId}:
+    get:
+      summary: Get topic content or upgrade to WebSocket
+      description: Returns topic content for HTTP requests, upgrades to WebSocket for real-time communication
+      operationId: getTopic
+      parameters:
+        - $ref: '#/components/parameters/TopicId'
+        - $ref: '#/components/parameters/Secret'
+        - $ref: '#/components/parameters/Upgrade'
+      responses:
+        '200':
+          description: Topic content retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicContent'
+        '101':
+          description: Switching protocols to WebSocket
+        '404':
+          description: Topic not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Invalid authentication secret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      summary: Update topic content
+      description: Updates markdown content for presentation topic (requires valid secret)
+      operationId: updateTopicContent
+      parameters:
+        - $ref: '#/components/parameters/TopicId'
+        - $ref: '#/components/parameters/Secret'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentUpdate'
+      responses:
+        '201':
+          description: Content updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateSuccess'
+        '400':
+          description: Invalid content format or size
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Invalid authentication secret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Topic not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Content exceeds size limit (1MB)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  parameters:
+    TopicId:
+      name: topicId
+      in: path
+      required: true
+      description: Unique topic identifier (base64url, 22 characters)
+      schema:
+        type: string
+        pattern: '^[A-Za-z0-9_-]{22}$'
+        example: "abc123def456ghi789jklm"
+    
+    Secret:
+      name: secret
+      in: query
+      required: false
+      description: HMAC authentication secret for publisher access
+      schema:
+        type: string
+        example: "xyz789abc123def456ghi789jklmnop123"
+    
+    Upgrade:
+      name: Upgrade
+      in: header
+      required: false
+      description: WebSocket upgrade header
+      schema:
+        type: string
+        enum: ["websocket"]
+
+  schemas:
+    TopicCreated:
+      type: object
+      required: [topicId, secret, subPath, pubPath]
+      properties:
+        topicId:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{22}$'
+          description: Unique topic identifier
+          example: "abc123def456ghi789jklm"
+        secret:
+          type: string
+          description: HMAC authentication secret
+          example: "xyz789abc123def456ghi789jklmnop123"
+        subPath:
+          type: string
+          description: Read-only subscriber access path
+          example: "/api/topics/abc123def456ghi789jklm"
+        pubPath:
+          type: string
+          description: Publisher access path with secret
+          example: "/api/topics/abc123def456ghi789jklm?secret=xyz789abc123def456ghi789jklmnop123"
+
+    TopicContent:
+      type: object
+      required: [markdown, createdAt, updatedAt]
+      properties:
+        markdown:
+          type: string
+          description: Current presentation content in markdown
+          maxLength: 1048576
+          example: "# My Presentation\n\n## Introduction\n\nWelcome to my presentation!"
+        createdAt:
+          type: string
+          format: date-time
+          description: Topic creation timestamp
+          example: "2025-11-13T10:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last content modification timestamp
+          example: "2025-11-13T10:15:30.000Z"
+
+    ContentUpdate:
+      type: object
+      required: [markdown]
+      properties:
+        markdown:
+          type: string
+          description: Updated presentation content
+          maxLength: 1048576
+          example: "# Updated Presentation\n\n## New Section\n\nUpdated content here!"
+
+    UpdateSuccess:
+      type: object
+      required: [success, updatedAt]
+      properties:
+        success:
+          type: boolean
+          description: Update operation status
+          example: true
+        updatedAt:
+          type: string
+          format: date-time
+          description: Content update timestamp
+          example: "2025-11-13T10:15:30.000Z"
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "Topic not found"
+        code:
+          type: string
+          description: Machine-readable error code
+          example: "TOPIC_NOT_FOUND"
+        details:
+          type: object
+          description: Additional error context
+          additionalProperties: true
+
+  securitySchemes:
+    HMACSecret:
+      type: apiKey
+      in: query
+      name: secret
+      description: HMAC-SHA256 authentication secret for topic access
+
+security:
+  - HMACSecret: []

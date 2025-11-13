@@ -85,6 +85,10 @@ The project includes a custom "green" theme with:
 - Use Tailwind utility classes alongside DaisyUI components
 - All styling configuration is in `src/style/main.css`
 
+### Hono.js
+https://hono.dev/llms.txt
+This project uses **Hono.js** as the backend API framework.
+
 ## Development Workflow
 
 1. **Setup**: Clone the repository and run `deno task serve` for development
