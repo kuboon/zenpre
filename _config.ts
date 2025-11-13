@@ -24,8 +24,8 @@ const site = lume({
   prettyUrls: false,
   src: "src",
   server: {
-    middlewares: [myServer]
-  }
+    middlewares: [myServer],
+  },
 }, {
   markdown: { options: { breaks: true }, plugins: [] },
 });

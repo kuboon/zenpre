@@ -55,8 +55,11 @@ export default function bundle(userOptions?: Options) {
 
         for (const page of pages) {
           try {
-            const { content, filename, enableSourceMap } = prepareAsset(site, page);
-            
+            const { content, filename, enableSourceMap } = prepareAsset(
+              site,
+              page,
+            );
+
             // Write temporary file for bundling
             const tempFile = filename;
             await Deno.writeTextFile(tempFile, content);
@@ -65,16 +68,17 @@ export default function bundle(userOptions?: Options) {
               entrypoints: [`file://${tempFile}`],
               format: "esm" as const,
               minify: options.options?.minify,
-              outputDir: '/',
+              outputDir: "/",
               write: false,
             } satisfies Deno.bundle.Options;
 
-            console.log('Bundling with options:', bundleOptions);
+            console.log("Bundling with options:", bundleOptions);
             // Bundle the file
             const result = await Deno.bundle(bundleOptions);
 
             if (!result.success) {
-              const errors = result.errors?.map((e) => e.text || String(e)).join(", ");
+              const errors = result.errors?.map((e) => e.text || String(e))
+                .join(", ");
               throw new Error(`Bundle failed: ${errors}`);
             }
 
@@ -91,7 +95,7 @@ export default function bundle(userOptions?: Options) {
               site,
               page,
               finalCode,
-              enableSourceMap ? undefined : undefined // Source maps from Deno.bundle not currently supported
+              enableSourceMap ? undefined : undefined, // Source maps from Deno.bundle not currently supported
             );
 
             if (item) {
@@ -102,8 +106,12 @@ export default function bundle(userOptions?: Options) {
               });
             }
           } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            log.error(`[bundle plugin] Failed to bundle ${page.sourcePath}: ${message}`);
+            const message = error instanceof Error
+              ? error.message
+              : String(error);
+            log.error(
+              `[bundle plugin] Failed to bundle ${page.sourcePath}: ${message}`,
+            );
             throw error;
           }
         }
