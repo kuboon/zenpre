@@ -87,7 +87,11 @@ app.get("/", (c) => {
 // Export the app type for RPC client
 export type AppType = typeof apiRoutes;
 
-// Start the server
-Deno.serve({ port: 8000 }, app.fetch);
+// Export the Hono app for use as middleware
+export { app };
 
-console.log("Server running on http://localhost:8000");
+// Start the server only if this module is run directly
+if (import.meta.main) {
+  Deno.serve({ port: 8000 }, app.fetch);
+  console.log("Server running on http://localhost:8000");
+}

@@ -19,6 +19,26 @@ server/
 
 ## Running the Server
 
+### Integrated Server (Recommended)
+
+Run the Lume static site with Hono API middleware:
+
+```bash
+# First, build the static site
+deno task build
+
+# Then start the integrated server
+deno task serve
+```
+
+The server will start on `http://localhost:8000` and serve:
+- Static site files from `_site/`
+- API endpoints at `/api/*` (powered by Hono)
+
+### Standalone Hono Server
+
+You can also run just the Hono API server:
+
 ```bash
 deno task server
 ```

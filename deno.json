@@ -9,11 +9,15 @@
       "command": "deno task lume"
     },
     "serve": {
-      "description": "Run and serve the site for development",
+      "description": "Run Lume server with Hono middleware",
+      "command": "deno run --allow-read --allow-write --allow-net --allow-env --allow-run --allow-sys --unsafely-ignore-certificate-errors server.ts"
+    },
+    "serve:lume": {
+      "description": "Run the default Lume development server",
       "command": "deno task lume -s"
     },
     "server": {
-      "description": "Run the Hono.js server",
+      "description": "Run the Hono.js server standalone",
       "command": "deno run --allow-net --allow-env --unsafely-ignore-certificate-errors server/main.ts"
     },
     "server:client": {
