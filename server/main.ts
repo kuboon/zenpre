@@ -1,9 +1,6 @@
-import { Hono } from "npm:hono@4.6.14";
-import { zValidator } from "npm:@hono/zod-validator@0.3.0";
-import { z } from "npm:zod@3.24.1";
-
-// Create the main app
-const app = new Hono();
+import { Hono } from "@hono/hono";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 
 // Define validation schemas using Zod
 const postSchema = z.object({
@@ -13,7 +10,7 @@ const postSchema = z.object({
 });
 
 // Create a route for the RPC
-const apiRoutes = new Hono()
+const apiRoutes = new Hono().basePath("/api")
   // Sample POST endpoint with Zod validation
   .post("/posts", zValidator("json", postSchema), (c) => {
     const data = c.req.valid("json");
@@ -67,31 +64,12 @@ const apiRoutes = new Hono()
     });
   });
 
-// Mount the API routes
-app.route("/api", apiRoutes);
-
-// Root endpoint
-app.get("/", (c) => {
-  return c.json({
-    message: "Hono.js server with Zod validation and RPC",
-    endpoints: {
-      posts: {
-        create: "POST /api/posts",
-        list: "GET /api/posts",
-        get: "GET /api/posts/:id",
-      },
-    },
-  });
-});
-
 // Export the app type for RPC client
 export type AppType = typeof apiRoutes;
 
 // Export the Hono app for use as middleware
-export { app };
-
-// Start the server only if this module is run directly
-if (import.meta.main) {
-  Deno.serve({ port: 8000 }, app.fetch);
-  console.log("Server running on http://localhost:8000");
+export async function myServer(req: Request, next: (req: Request) => Promise<Response>): Promise<Response> {
+  const res = await apiRoutes.fetch(req);
+  if (res.status !== 404) return res;
+  return next(req);
 }

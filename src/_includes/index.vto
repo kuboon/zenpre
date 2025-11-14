@@ -209,12 +209,19 @@ noindex: true
       
       <!-- CTA Section -->
       <div class="mt-16 animate-fade-in-up delay-700">
-        <a href="/posts/" class="btn btn-primary btn-lg text-lg px-12 py-4 shadow-2xl hover:shadow-primary/50 transition-all duration-300 hover:scale-105">
+        <a id="sample" href="#" class="btn btn-primary btn-lg text-lg px-12 py-4 shadow-2xl hover:shadow-primary/50 transition-all duration-300 hover:scale-105">
           {{ cta_text }}
           <svg class="w-6 h-6 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
           </svg>
         </a>
+        <script type="module">
+          import { exampleUsage } from "../client_sample.js";
+          document.getElementById("sample")?.addEventListener("click", async (e) => {
+            e.preventDefault();
+            await exampleUsage();
+          });
+        </script>
       </div>
     </div>
   </div>

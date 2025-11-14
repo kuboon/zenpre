@@ -1,11 +1,11 @@
-import { hc } from "npm:hono@4.6.14/client";
-import type { AppType } from "./main.ts";
+import { hc } from "@hono/hono/client";
+import type { AppType } from "..//server/main.ts";
 
 // Create a typed RPC client
-const client = hc<AppType>("http://localhost:8000/api");
+const client = hc<AppType>(location.origin + "/api");
 
 // Example usage of the RPC client
-async function exampleUsage() {
+export async function exampleUsage() {
   try {
     // Create a new post using the typed client
     console.log("Creating a new post...");
@@ -37,12 +37,3 @@ async function exampleUsage() {
     console.error("Error:", error);
   }
 }
-
-// Run the example if this file is executed directly
-if (import.meta.main) {
-  console.log("RPC Client Example\n");
-  await exampleUsage();
-  Deno.exit(0);
-}
-
-export { client };

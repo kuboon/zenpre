@@ -9,24 +9,8 @@
       "command": "deno task lume"
     },
     "serve": {
-      "description": "Run Lume server with Hono middleware",
-      "command": "deno run --allow-read --allow-write --allow-net --allow-env --allow-run --allow-sys --unsafely-ignore-certificate-errors server.ts"
-    },
-    "serve:lume": {
       "description": "Run the default Lume development server",
       "command": "deno task lume -s"
-    },
-    "server": {
-      "description": "Run the Hono.js server standalone",
-      "command": "deno run --allow-net --allow-env --unsafely-ignore-certificate-errors server/main.ts"
-    },
-    "server:client": {
-      "description": "Run the RPC client example",
-      "command": "deno run --allow-net --unsafely-ignore-certificate-errors server/client.ts"
-    },
-    "server:test": {
-      "description": "Run server tests (requires server to be running)",
-      "command": "deno run --allow-net --unsafely-ignore-certificate-errors server/test.ts"
     }
   },
   "compilerOptions": {
@@ -37,11 +21,15 @@
     "jsxImportSource": "lume"
   },
   "imports": {
+    "@hono/hono": "jsr:@hono/hono@^4.10.5",
+    "@hono/zod-validator": "jsr:@hono/zod-validator@^0.7.4",
     "lume/": "https://cdn.jsdelivr.net/gh/lumeland/lume@3.1.1/",
     "lume/cms/": "https://cdn.jsdelivr.net/gh/lumeland/cms@0.13.0/",
-    "lume/jsx-runtime": "https://cdn.jsdelivr.net/gh/oscarotero/ssx@0.1.12/jsx-runtime.ts"
+    "lume/jsx-runtime": "https://cdn.jsdelivr.net/gh/oscarotero/ssx@0.1.12/jsx-runtime.ts",
+    "zod": "npm:zod@^4.1.12"
   },
   "unstable": [
+    "bundle",
     "temporal",
     "fmt-component",
     "kv"
@@ -60,7 +48,8 @@
     "lume": {
       "read": true,
       "write": [
-        "./"
+        "./",
+        "$HOME/.cache/"
       ],
       "import": [
         "cdn.jsdelivr.net:443",
