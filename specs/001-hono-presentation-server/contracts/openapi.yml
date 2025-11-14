@@ -19,18 +19,18 @@ paths:
       description: Generates unique topic ID and authentication secret for presentation session
       operationId: createTopic
       responses:
-        '200':
+        "200":
           description: Topic created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TopicCreated'
-        '500':
+                $ref: "#/components/schemas/TopicCreated"
+        "500":
           description: Server error during topic creation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
 
   /api/topics/{topicId}:
     get:
@@ -38,75 +38,75 @@ paths:
       description: Returns topic content for HTTP requests, upgrades to WebSocket for real-time communication
       operationId: getTopic
       parameters:
-        - $ref: '#/components/parameters/TopicId'
-        - $ref: '#/components/parameters/Secret'
-        - $ref: '#/components/parameters/Upgrade'
+        - $ref: "#/components/parameters/TopicId"
+        - $ref: "#/components/parameters/Secret"
+        - $ref: "#/components/parameters/Upgrade"
       responses:
-        '200':
+        "200":
           description: Topic content retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TopicContent'
-        '101':
+                $ref: "#/components/schemas/TopicContent"
+        "101":
           description: Switching protocols to WebSocket
-        '404':
+        "404":
           description: Topic not found or expired
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '403':
+                $ref: "#/components/schemas/Error"
+        "403":
           description: Invalid authentication secret
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-    
+                $ref: "#/components/schemas/Error"
+
     post:
       summary: Update topic content
       description: Updates markdown content for presentation topic (requires valid secret)
       operationId: updateTopicContent
       parameters:
-        - $ref: '#/components/parameters/TopicId'
-        - $ref: '#/components/parameters/Secret'
+        - $ref: "#/components/parameters/TopicId"
+        - $ref: "#/components/parameters/Secret"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ContentUpdate'
+              $ref: "#/components/schemas/ContentUpdate"
       responses:
-        '201':
+        "201":
           description: Content updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UpdateSuccess'
-        '400':
+                $ref: "#/components/schemas/UpdateSuccess"
+        "400":
           description: Invalid content format or size
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '403':
+                $ref: "#/components/schemas/Error"
+        "403":
           description: Invalid authentication secret
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '404':
+                $ref: "#/components/schemas/Error"
+        "404":
           description: Topic not found or expired
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '413':
+                $ref: "#/components/schemas/Error"
+        "413":
           description: Content exceeds size limit (1MB)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
 
 components:
   parameters:
@@ -117,9 +117,9 @@ components:
       description: Unique topic identifier (base64url, 22 characters)
       schema:
         type: string
-        pattern: '^[A-Za-z0-9_-]{22}$'
+        pattern: "^[A-Za-z0-9_-]{22}$"
         example: "abc123def456ghi789jklm"
-    
+
     Secret:
       name: secret
       in: query
@@ -128,7 +128,7 @@ components:
       schema:
         type: string
         example: "xyz789abc123def456ghi789jklmnop123"
-    
+
     Upgrade:
       name: Upgrade
       in: header
@@ -145,7 +145,7 @@ components:
       properties:
         topicId:
           type: string
-          pattern: '^[A-Za-z0-9_-]{22}$'
+          pattern: "^[A-Za-z0-9_-]{22}$"
           description: Unique topic identifier
           example: "abc123def456ghi789jklm"
         secret:

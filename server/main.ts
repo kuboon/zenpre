@@ -14,14 +14,14 @@ const apiRoutes = new Hono().basePath("/api")
   // Sample POST endpoint with Zod validation
   .post("/posts", zValidator("json", postSchema), (c) => {
     const data = c.req.valid("json");
-    
+
     // In a real application, you would save this to a database
     const post = {
       id: Math.random().toString(36).substring(7),
       ...data,
       createdAt: new Date().toISOString(),
     };
-    
+
     return c.json({
       success: true,
       data: post,
@@ -39,7 +39,7 @@ const apiRoutes = new Hono().basePath("/api")
         createdAt: new Date().toISOString(),
       },
     ];
-    
+
     return c.json({
       success: true,
       data: posts,
@@ -48,7 +48,7 @@ const apiRoutes = new Hono().basePath("/api")
   // GET endpoint to retrieve a specific post
   .get("/posts/:id", (c) => {
     const id = c.req.param("id");
-    
+
     // Mock data for demonstration
     const post = {
       id,
@@ -57,7 +57,7 @@ const apiRoutes = new Hono().basePath("/api")
       published: true,
       createdAt: new Date().toISOString(),
     };
-    
+
     return c.json({
       success: true,
       data: post,
@@ -68,7 +68,10 @@ const apiRoutes = new Hono().basePath("/api")
 export type AppType = typeof apiRoutes;
 
 // Export the Hono app for use as middleware
-export async function myServer(req: Request, next: (req: Request) => Promise<Response>): Promise<Response> {
+export async function myServer(
+  req: Request,
+  next: (req: Request) => Promise<Response>,
+): Promise<Response> {
   const res = await apiRoutes.fetch(req);
   if (res.status !== 404) return res;
   return next(req);

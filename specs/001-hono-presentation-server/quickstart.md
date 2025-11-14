@@ -1,6 +1,6 @@
 # Quickstart: Real-time Presentation Server
 
-**Feature**: Real-time Presentation Server with WebSocket Pub-Sub  
+**Feature**: Real-time Presentation Server with WebSocket Pub-Sub\
 **Date**: November 13, 2025
 
 ## Prerequisites
@@ -39,76 +39,83 @@ deno add jsr:@hono/hono@^4.0.0
 #### Basic Server (`src/server.ts`)
 
 ```typescript
-import { Hono } from 'hono'
-import { cors } from 'hono/cors'
-import { topicsRouter } from './api/topics.ts'
-import { websocketRouter } from './api/websocket.ts'
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { topicsRouter } from "./api/topics.ts";
+import { websocketRouter } from "./api/websocket.ts";
 
-const app = new Hono()
+const app = new Hono();
 
 // Middleware
-app.use('*', cors({
-  allowHeaders: ['Content-Type'],
-  allowMethods: ['GET', 'POST', 'OPTIONS']
-}))
+app.use(
+  "*",
+  cors({
+    allowHeaders: ["Content-Type"],
+    allowMethods: ["GET", "POST", "OPTIONS"],
+  }),
+);
 
 // Routes
-app.route('/api/topics', topicsRouter)
-app.route('/api/topics', websocketRouter)
+app.route("/api/topics", topicsRouter);
+app.route("/api/topics", websocketRouter);
 
-
-console.log('Server starting on http://localhost:8000')
-Deno.serve({ port: 8000 }, app.fetch)
+console.log("Server starting on http://localhost:8000");
+Deno.serve({ port: 8000 }, app.fetch);
 ```
 
 #### Topic Types (`src/models/topic.ts`)
 
 ```typescript
 export interface Topic {
-  topicId: string
-  markdown: string
-  createdAt: Date
-  updatedAt: Date
+  topicId: string;
+  markdown: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface TopicPair {
-  topicId: string
-  secret: string
+  topicId: string;
+  secret: string;
 }
 
 export interface CreateTopicResponse extends TopicPair {
-  subPath: string
-  pubPath: string
+  subPath: string;
+  pubPath: string;
 }
 
-export type AccessLevel = 'readable' | 'writable' | 'invalid'
+export type AccessLevel = "readable" | "writable" | "invalid";
 ```
 
 #### Authentication (`src/auth/crypto.ts`)
 
 ```typescript
 export async function generateTopic(): Promise<TopicPair> {
-  const topicIdRaw = crypto.getRandomValues(new Uint8Array(16))
-  const key = await getHmacKey()
-  const secretRaw = await crypto.subtle.sign('HMAC', key, topicIdRaw)
-  
+  const topicIdRaw = crypto.getRandomValues(new Uint8Array(16));
+  const key = await getHmacKey();
+  const secretRaw = await crypto.subtle.sign("HMAC", key, topicIdRaw);
+
   return {
     topicId: encodeBase64Url(topicIdRaw),
-    secret: encodeBase64Url(secretRaw)
-  }
+    secret: encodeBase64Url(secretRaw),
+  };
 }
 
 export async function verifyAccess(pair: TopicPair): Promise<AccessLevel> {
-  if (!pair.secret) return 'readable'
-  
+  if (!pair.secret) return "readable";
+
   try {
-    const topicIdRaw = decodeBase64Url(pair.topicId)
-    const secretRaw = decodeBase64Url(pair.secret)
-    const key = await getHmacKey()
-    const verified = await crypto.subtle.verify('HMAC', key, secretRaw, topicIdRaw)
-    return verified ? 'writable' : 'invalid'
+    const topicIdRaw = decodeBase64Url(pair.topicId);
+    const secretRaw = decodeBase64Url(pair.secret);
+    const key = await getHmacKey();
+    const verified = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      secretRaw,
+      topicIdRaw,
+    );
+    return verified ? "writable" : "invalid";
   } catch {
-    return 'invalid'
+    return "invalid";
   }
 }
 
@@ -118,7 +125,7 @@ function encodeBase64Url(bytes: ArrayBuffer): string {
 }
 
 function decodeBase64Url(str: string): Uint8Array {
-  // Implementation for base64url decoding  
+  // Implementation for base64url decoding
 }
 
 async function getHmacKey() {
@@ -173,54 +180,58 @@ curl http://localhost:8000/api/topics/abc123def456ghi789jklm
 
 ```javascript
 // Publisher connection (with secret)
-const publisherWs = new WebSocket('ws://localhost:8000/api/topics/abc123def456ghi789jklm?secret=xyz789abc123def456ghi789jklmnop123')
+const publisherWs = new WebSocket(
+  "ws://localhost:8000/api/topics/abc123def456ghi789jklm?secret=xyz789abc123def456ghi789jklmnop123",
+);
 
 publisherWs.onopen = () => {
-  console.log('Publisher connected')
-  
+  console.log("Publisher connected");
+
   // Send content update
   publisherWs.send(JSON.stringify({
-    markdown: '# Live Update\n\nThis content updates in real-time!'
-  }))
-  
+    markdown: "# Live Update\n\nThis content updates in real-time!",
+  }));
+
   // Send navigation update
   publisherWs.send(JSON.stringify({
     currentPage: 1,
-    currentSection: 0
-  }))
-}
+    currentSection: 0,
+  }));
+};
 
 // Subscriber connection (without secret)
-const subscriberWs = new WebSocket('ws://localhost:8000/api/topics/abc123def456ghi789jklm')
+const subscriberWs = new WebSocket(
+  "ws://localhost:8000/api/topics/abc123def456ghi789jklm",
+);
 
 subscriberWs.onmessage = (event) => {
-  const data = JSON.parse(event.data)
-  
+  const data = JSON.parse(event.data);
+
   if (data.markdown) {
-    console.log('Content updated:', data.markdown)
+    console.log("Content updated:", data.markdown);
     // Update presentation view
   }
-  
+
   if (data.currentPage !== undefined) {
-    console.log('Page changed to:', data.currentPage)
+    console.log("Page changed to:", data.currentPage);
     // Sync page navigation
   }
-  
+
   if (data.pub?.reaction) {
-    console.log('Reaction received:', data.pub.reaction.emoji)
+    console.log("Reaction received:", data.pub.reaction.emoji);
     // Show reaction animation
   }
-}
+};
 
 // Send reaction (available to all users)
 subscriberWs.send(JSON.stringify({
   pub: {
     reaction: {
-      emoji: '👍',
-      timestamp: Date.now()
-    }
-  }
-}))
+      emoji: "👍",
+      timestamp: Date.now(),
+    },
+  },
+}));
 ```
 
 ## Testing
@@ -242,29 +253,31 @@ deno task test:watch
 
 ```typescript
 // tests/integration/api-topics.test.ts
-import { assertEquals } from "https://deno.land/std/assert/mod.ts"
+import { assertEquals } from "https://deno.land/std/assert/mod.ts";
 
 Deno.test("Topic creation and retrieval", async () => {
-  const server = await startTestServer()
-  
+  const server = await startTestServer();
+
   // Create topic
-  const createResponse = await fetch('http://localhost:8001/api/topics', {
-    method: 'POST'
-  })
-  const topic = await createResponse.json()
-  
-  assertEquals(createResponse.status, 201)
-  assertEquals(topic.topicId.length, 22)
-  
+  const createResponse = await fetch("http://localhost:8001/api/topics", {
+    method: "POST",
+  });
+  const topic = await createResponse.json();
+
+  assertEquals(createResponse.status, 201);
+  assertEquals(topic.topicId.length, 22);
+
   // Get topic content
-  const getResponse = await fetch(`http://localhost:8001/api/topics/${topic.topicId}`)
-  const content = await getResponse.json()
-  
-  assertEquals(getResponse.status, 200)
-  assertEquals(content.markdown, '')
-  
-  await server.close()
-})
+  const getResponse = await fetch(
+    `http://localhost:8001/api/topics/${topic.topicId}`,
+  );
+  const content = await getResponse.json();
+
+  assertEquals(getResponse.status, 200);
+  assertEquals(content.markdown, "");
+
+  await server.close();
+});
 ```
 
 ## Deployment
@@ -306,4 +319,5 @@ HMAC_KEY=your-key PORT=8000 deno run \
 - Add monitoring and logging
 - Deploy to production environment
 
-This quickstart provides the foundation for building the real-time presentation server according to the specification and constitution requirements.
+This quickstart provides the foundation for building the real-time presentation
+server according to the specification and constitution requirements.

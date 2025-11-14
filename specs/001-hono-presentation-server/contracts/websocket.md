@@ -1,7 +1,7 @@
 # WebSocket API Contract
 
-**Feature**: Real-time Presentation Server  
-**Protocol**: WebSocket over HTTP/1.1  
+**Feature**: Real-time Presentation Server\
+**Protocol**: WebSocket over HTTP/1.1\
 **Date**: November 13, 2025
 
 ## Connection Establishment
@@ -13,16 +13,17 @@ ws://localhost:8000/api/topics/{topicId}[?secret={secret}]
 ```
 
 **Parameters**:
+
 - `topicId`: Required. Unique topic identifier (base64url, 22 characters)
 - `secret`: Optional. HMAC authentication secret for publisher access
 
 ### Access Levels
 
-| Secret Present | Access Level | Capabilities |
-|----------------|--------------|--------------|
-| Yes (valid)    | `writable`   | Send content updates, receive all messages |
+| Secret Present | Access Level | Capabilities                                 |
+| -------------- | ------------ | -------------------------------------------- |
+| Yes (valid)    | `writable`   | Send content updates, receive all messages   |
 | No             | `readable`   | Receive content updates only, send reactions |
-| Yes (invalid)  | N/A          | Connection rejected with 403 |
+| Yes (invalid)  | N/A          | Connection rejected with 403                 |
 
 ### Connection Lifecycle
 
@@ -57,6 +58,7 @@ All WebSocket messages use JSON format with UTF-8 encoding.
 ```
 
 **Validation**:
+
 - `markdown` required string, max 1MB
 - Only allowed for `writable` access level
 - Triggers storage update and broadcast to all connections
@@ -71,6 +73,7 @@ All WebSocket messages use JSON format with UTF-8 encoding.
 ```
 
 **Validation**:
+
 - `currentPage` optional integer >= 0
 - `currentSection` optional integer >= 0
 - Only allowed for `writable` access level
@@ -90,6 +93,7 @@ All WebSocket messages use JSON format with UTF-8 encoding.
 ```
 
 **Validation**:
+
 - `pub.reaction.emoji` required string, single emoji character
 - `pub.reaction.timestamp` required integer, Unix timestamp in milliseconds
 - Allowed for all access levels
@@ -106,6 +110,7 @@ All WebSocket messages use JSON format with UTF-8 encoding.
 ```
 
 **Triggers**:
+
 - Publisher sends content update
 - New connection joins (initial state)
 
@@ -119,6 +124,7 @@ All WebSocket messages use JSON format with UTF-8 encoding.
 ```
 
 **Triggers**:
+
 - Publisher sends navigation update
 - Automatic sync for new connections
 
@@ -128,7 +134,7 @@ All WebSocket messages use JSON format with UTF-8 encoding.
 {
   "pub": {
     "reaction": {
-      "emoji": "👍", 
+      "emoji": "👍",
       "timestamp": 1699876543210
     }
   }
@@ -136,6 +142,7 @@ All WebSocket messages use JSON format with UTF-8 encoding.
 ```
 
 **Triggers**:
+
 - Any connected user sends reaction
 - Includes original timestamp for client-side animations
 
@@ -150,6 +157,7 @@ All WebSocket messages use JSON format with UTF-8 encoding.
 ```
 
 **Triggers**:
+
 - Malformed JSON
 - Invalid message structure
 - Permission violations
@@ -163,12 +171,12 @@ All WebSocket messages use JSON format with UTF-8 encoding.
 interface ConnectionRegistry {
   [topicId: string]: {
     [connectionId: string]: {
-      ws: WebSocket
-      accessLevel: 'readable' | 'writable'
-      connectedAt: Date
-      lastActivity: Date
-    }
-  }
+      ws: WebSocket;
+      accessLevel: "readable" | "writable";
+      connectedAt: Date;
+      lastActivity: Date;
+    };
+  };
 }
 ```
 
@@ -187,13 +195,13 @@ interface ConnectionRegistry {
 
 ### Error Handling
 
-| Error Condition | Action | Response |
-|-----------------|--------|-----------|
-| Invalid JSON | Log warning | Send error message |
-| Permission denied | Log attempt | Send error message |
-| Content too large | Reject message | Send 413 error |
-| Connection lost | Cleanup registry | Remove from topic |
-| Topic not found | Close connection | Send 404 error |
+| Error Condition   | Action           | Response           |
+| ----------------- | ---------------- | ------------------ |
+| Invalid JSON      | Log warning      | Send error message |
+| Permission denied | Log attempt      | Send error message |
+| Content too large | Reject message   | Send 413 error     |
+| Connection lost   | Cleanup registry | Remove from topic  |
+| Topic not found   | Close connection | Send 404 error     |
 
 ### Performance Considerations
 
@@ -207,47 +215,48 @@ interface ConnectionRegistry {
 #### onOpen
 
 ```typescript
-onOpen: (event, ws) => {
+onOpen: ((event, ws) => {
   // 1. Extract topicId and secret from URL
   // 2. Verify HMAC authentication
   // 3. Register connection in topic registry
   // 4. Send initial state if topic has content
   // 5. Log connection establishment
-}
+});
 ```
 
 #### onMessage
 
 ```typescript
-onMessage: (event, ws) => {
+onMessage: ((event, ws) => {
   // 1. Parse JSON message
   // 2. Validate message format
   // 3. Check permissions for operation
   // 4. Execute business logic (store/broadcast)
   // 5. Update lastActivity timestamp
-}
+});
 ```
 
 #### onClose
 
 ```typescript
-onClose: (event, ws) => {
+onClose: ((event, ws) => {
   // 1. Remove connection from topic registry
   // 2. Clean up associated resources
   // 3. Close BroadcastChannel if no connections remain
   // 4. Log disconnection
-}
+});
 ```
 
 #### onError
 
 ```typescript
-onError: (event, ws) => {
+onError: ((event, ws) => {
   // 1. Log error details
   // 2. Send error response if connection still active
   // 3. Clean up connection registry
   // 4. Monitor for recurring issues
-}
+});
 ```
 
-This contract ensures consistent WebSocket behavior for real-time presentation features while maintaining security and performance requirements.
+This contract ensures consistent WebSocket behavior for real-time presentation
+features while maintaining security and performance requirements.

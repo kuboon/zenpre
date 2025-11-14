@@ -1,6 +1,6 @@
 # Data Model: Real-time Presentation Server
 
-**Date**: November 13, 2025  
+**Date**: November 13, 2025\
 **Feature**: Real-time Presentation Server with WebSocket Pub-Sub
 
 ## Core Entities
@@ -10,6 +10,7 @@
 Represents a presentation session with unique identifier and access control.
 
 **Fields**:
+
 - `topicId: string` - Unique identifier (base64url encoded, 16 bytes random)
 - `secret: string` - HMAC authentication secret (base64url encoded)
 - `markdown: string` - Current presentation content in markdown format
@@ -18,6 +19,7 @@ Represents a presentation session with unique identifier and access control.
 - `expiresAt: Date` - Automatic expiration timestamp (7 days from creation)
 
 **Validation Rules**:
+
 - `topicId` must be exactly 22 characters (base64url of 16 bytes)
 - `secret` must be valid HMAC-SHA256 signature of topicId
 - `markdown` content size limited to 1MB (1,048,576 bytes)
@@ -31,13 +33,16 @@ Represents a presentation session with unique identifier and access control.
 Represents active real-time connection to a topic.
 
 **Fields**:
+
 - `connectionId: string` - Unique connection identifier (UUID)
 - `topicId: string` - Associated topic identifier
-- `accessLevel: "readable" | "writable"` - Permission level based on secret verification
+- `accessLevel: "readable" | "writable"` - Permission level based on secret
+  verification
 - `connectedAt: Date` - Connection establishment timestamp
 - `lastActivity: Date` - Last message timestamp
 
 **Validation Rules**:
+
 - `accessLevel` determined by HMAC verification of secret parameter
 - `connectedAt` set on WebSocket connection establishment
 - `lastActivity` updated on each message send/receive
@@ -49,6 +54,7 @@ Represents active real-time connection to a topic.
 Represents real-time messages broadcast between connections.
 
 **Fields**:
+
 - `type: "content" | "meta"` - Message category
 - `topicId: string` - Target topic for broadcasting
 - `data: ContentMessage | MetaMessage` - Typed message payload
@@ -59,20 +65,21 @@ Represents real-time messages broadcast between connections.
 
 ```typescript
 interface ContentMessage {
-  markdown: string
+  markdown: string;
 }
 
 interface MetaMessage {
-  currentPage?: number
-  currentSection?: number
+  currentPage?: number;
+  currentSection?: number;
   reaction?: {
-    emoji: string
-    timestamp: number
-  }
+    emoji: string;
+    timestamp: number;
+  };
 }
 ```
 
 **Validation Rules**:
+
 - `type` must be either "content" or "meta"
 - `data.markdown` size limited to 1MB when type is "content"
 - `timestamp` automatically set on message creation
@@ -144,11 +151,11 @@ value: {
 
 ```typescript
 // WebSocket connection registry
-connections: Map<string, Map<string, WebSocketConnection>>
+connections: Map<string, Map<string, WebSocketConnection>>;
 // Key: topicId → Map of connectionId → connection details
 
-// BroadcastChannel registry  
-channels: Map<string, BroadcastChannel>
+// BroadcastChannel registry
+channels: Map<string, BroadcastChannel>;
 // Key: topicId → BroadcastChannel instance
 ```
 
@@ -162,10 +169,10 @@ interface CreateTopicRequest {
 }
 
 interface CreateTopicResponse {
-  topicId: string
-  secret: string
-  subPath: string    // Read-only access path
-  pubPath: string    // Publisher access path
+  topicId: string;
+  secret: string;
+  subPath: string; // Read-only access path
+  pubPath: string; // Publisher access path
 }
 ```
 
@@ -173,12 +180,12 @@ interface CreateTopicResponse {
 
 ```typescript
 interface UpdateContentRequest {
-  markdown: string   // Required, max 1MB
+  markdown: string; // Required, max 1MB
 }
 
 interface UpdateContentResponse {
-  success: boolean
-  updatedAt: string  // ISO timestamp
+  success: boolean;
+  updatedAt: string; // ISO timestamp
 }
 ```
 
@@ -187,29 +194,31 @@ interface UpdateContentResponse {
 ```typescript
 // Inbound (from clients)
 interface WebSocketInbound {
-  markdown?: string           // Content update (publisher only)
-  currentPage?: number        // Page navigation (publisher only)  
-  currentSection?: number     // Section navigation (publisher only)
-  pub?: {                    // Subscriber interaction
+  markdown?: string; // Content update (publisher only)
+  currentPage?: number; // Page navigation (publisher only)
+  currentSection?: number; // Section navigation (publisher only)
+  pub?: { // Subscriber interaction
     reaction: {
-      emoji: string
-      timestamp: number
-    }
-  }
+      emoji: string;
+      timestamp: number;
+    };
+  };
 }
 
 // Outbound (to clients)
 interface WebSocketOutbound {
-  markdown?: string           // Content broadcast
-  currentPage?: number        // Page sync
-  currentSection?: number     // Section sync
-  pub?: {                    // Subscriber interaction broadcast
+  markdown?: string; // Content broadcast
+  currentPage?: number; // Page sync
+  currentSection?: number; // Section sync
+  pub?: { // Subscriber interaction broadcast
     reaction: {
-      emoji: string
-      timestamp: number
-    }
-  }
+      emoji: string;
+      timestamp: number;
+    };
+  };
 }
 ```
 
-This data model provides strong typing, validation boundaries, and clear separation between persisted data (topics) and transient state (connections, messages) while supporting the real-time presentation requirements.
+This data model provides strong typing, validation boundaries, and clear
+separation between persisted data (topics) and transient state (connections,
+messages) while supporting the real-time presentation requirements.

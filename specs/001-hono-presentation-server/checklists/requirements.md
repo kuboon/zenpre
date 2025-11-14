@@ -1,7 +1,8 @@
 # Specification Quality Checklist: Real-time Presentation Server with WebSocket Pub-Sub
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: November 13, 2025  
+**Purpose**: Validate specification completeness and quality before proceeding
+to planning\
+**Created**: November 13, 2025\
 **Feature**: [Link to spec.md](../spec.md)
 
 ## Content Quality
@@ -31,4 +32,5 @@
 
 ## Notes
 
-All items passed validation. The specification is complete and ready for planning phase.
+All items passed validation. The specification is complete and ready for
+planning phase.
