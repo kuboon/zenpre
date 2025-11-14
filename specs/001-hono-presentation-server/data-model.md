@@ -11,19 +11,16 @@ Represents a presentation session with unique identifier and access control.
 
 **Fields**:
 
-- `topicId: string` - Unique identifier (base64url encoded, 16 bytes random)
+- `topicId: string` - Unique identifier (ULID)
 - `secret: string` - HMAC authentication secret (base64url encoded)
 - `markdown: string` - Current presentation content in markdown format
 - `createdAt: Date` - Topic creation timestamp
 - `updatedAt: Date` - Last content modification timestamp
-- `expiresAt: Date` - Automatic expiration timestamp (7 days from creation)
+- `expiresAt: Date` - Automatic expiration timestamp (90 days from creation)
 
 **Validation Rules**:
 
-- `topicId` must be exactly 22 characters (base64url of 16 bytes)
-- `secret` must be valid HMAC-SHA256 signature of topicId
 - `markdown` content size limited to 1MB (1,048,576 bytes)
-- `expiresAt` must be set to 7 days from `createdAt`
 - `updatedAt` automatically set on content modifications
 
 **Storage Key Pattern**: `["topic", topicId]`
@@ -47,11 +44,9 @@ Represents active real-time connection to a topic.
 - `connectedAt` set on WebSocket connection establishment
 - `lastActivity` updated on each message send/receive
 
-**Storage**: In-memory only (Map-based registry), not persisted
-
 ### Message
 
-Represents real-time messages broadcast between connections.
+Represents real-time messages broadcast between connections. (Use Deno native BroadcastChannel for distribution)
 
 **Fields**:
 
@@ -59,7 +54,7 @@ Represents real-time messages broadcast between connections.
 - `topicId: string` - Target topic for broadcasting
 - `data: ContentMessage | MetaMessage` - Typed message payload
 - `timestamp: Date` - Message creation timestamp
-- `senderId?: string` - Optional connection identifier of sender
+- `senderId: string` - Connection identifier of sender
 
 **Message Types**:
 
@@ -142,21 +137,9 @@ value: {
   createdAt: string  // ISO timestamp
   updatedAt: string  // ISO timestamp
 }
-// TTL: 7 days (604800000ms)
+// TTL: 30 days
 
 // No additional KV storage needed for connections/messages
-```
-
-### In-Memory Structures
-
-```typescript
-// WebSocket connection registry
-connections: Map<string, Map<string, WebSocketConnection>>;
-// Key: topicId → Map of connectionId → connection details
-
-// BroadcastChannel registry
-channels: Map<string, BroadcastChannel>;
-// Key: topicId → BroadcastChannel instance
 ```
 
 ## Validation Schema
@@ -171,8 +154,6 @@ interface CreateTopicRequest {
 interface CreateTopicResponse {
   topicId: string;
   secret: string;
-  subPath: string; // Read-only access path
-  pubPath: string; // Publisher access path
 }
 ```
 

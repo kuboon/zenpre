@@ -1,71 +1,39 @@
 # Implementation Plan: Real-time Presentation Server with WebSocket Pub-Sub
 
-**Branch**: `001-hono-presentation-server` | **Date**: November 13, 2025 |
-**Spec**: [link](spec.md) **Input**: Feature specification from
-`/specs/001-hono-presentation-server/spec.md`
+**Branch**: `001-hono-presentation-server` | **Date**: November 14, 2025 | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/specs/001-hono-presentation-server/spec.md`
 
 **Note**: This template is filled in by the `/speckit.plan` command. See
 `.specify/templates/commands/plan.md` for the execution workflow.
 
 ## Summary
 
-Implement a real-time presentation server using Hono.js that enables presenters
-to share markdown content with multiple participants via WebSocket connections.
-The system provides HTTP APIs for topic creation and authentication, WebSocket
-connections for real-time updates, and Deno KV for content persistence with
-HMAC-based access control.
+Implement a real-time presentation server that replicates deno-pubsub functionality using Hono.js framework. The system provides WebSocket-based pub-sub for markdown content synchronization between presenters and participants, with HMAC-based authentication for topic management and Deno KV for data persistence.
 
 ## Technical Context
 
 **Language/Version**: TypeScript with Deno 2.x runtime\
-**Primary Dependencies**: Hono.js for HTTP/WebSocket API, Deno KV for storage,
-Web Crypto API for HMAC authentication\
-**Storage**: Deno KV for topic content and metadata with 7-day expiration\
+**Primary Dependencies**: Hono.js for HTTP/WebSocket API, Deno KV for storage, Web Crypto API for HMAC authentication\
+**Storage**: Deno KV with abstraction layer for future migration capability\
 **Testing**: Deno test framework with WebSocket testing utilities\
-**Target Platform**: Deno runtime server environment with WebSocket support\
-**Project Type**: Web application with backend API and real-time WebSocket
-communication\
-**Performance Goals**: <100ms message broadcast latency, 50+ concurrent
-connections per topic, <200ms API response time\
-**Constraints**: <1MB content payload limit, 7-day content expiration, HMAC
-authentication required\
-**Scale/Scope**: Support multiple concurrent presentation topics, hundreds of
-participants across topics
+**Target Platform**: Deno runtime environment (cross-platform server deployment)\
+**Project Type**: Backend API server with real-time WebSocket capabilities\
+**Performance Goals**: Support 50+ concurrent WebSocket connections per topic, <100ms message propagation, <200ms API response times\
+**Constraints**: Follow ZenPre constitution, use only Deno ecosystem, implement storage abstraction layer\
+**Scale/Scope**: Medium-scale real-time application supporting multiple concurrent presentation sessions
 
 ## Constitution Check
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-### Initial Check (Before Phase 0)
+✅ **I. Modern Runtime Platform**: Using Deno 2.x runtime with TypeScript, leveraging built-in Web APIs (WebSocket, Web Crypto, BroadcastChannel, Deno KV)
+✅ **III. Backend API Architecture**: Implementing with Hono.js framework following RESTful principles with proper middleware and error handling
+✅ **IV. Data Storage Abstraction**: Implemented StorageAbstraction<T> interface wrapping Deno KV as documented in data-model.md
+✅ **V. Japanese-First Development**: Error messages and user-facing content configured for Japanese language
 
-✅ **I. Modern Runtime Platform**: Uses Deno runtime with TypeScript, leverages
-built-in Web Crypto API and WebSocket support ✅ **II. Frontend Build System**:
-N/A - This is a backend API service only\
-✅ **III. Backend API Architecture**: Uses Hono.js framework with RESTful HTTP
-endpoints and WebSocket upgrade handling ✅ **IV. Data Storage Abstraction**:
-Will implement abstraction layer over Deno KV for topic storage and content
-persistence ✅ **V. Japanese-First Development**: Error messages and API
-responses can be in Japanese where user-facing
+❓ **II. Frontend Build System**: Not applicable - this is backend-only server implementation
 
-### Post-Design Check (After Phase 1)
-
-✅ **I. Modern Runtime Platform**: Confirmed - All dependencies are
-JSR-compatible, using Deno's built-in WebSocket and Web Crypto APIs ✅ **II.
-Frontend Build System**: N/A - Backend-only service ✅ **III. Backend API
-Architecture**: Confirmed - Hono.js with proper middleware pipeline, RESTful
-endpoints, consistent error responses ✅ **IV. Data Storage Abstraction**:
-Confirmed - Designed complete abstraction layer (`StorageAbstraction<T>`
-interface) wrapping Deno KV ✅ **V. Japanese-First Development**: Confirmed -
-Error messages structure supports Japanese localization
-
-**Performance Standards Check**:
-
-- API responses target <200ms (meets <200ms p95 requirement) ✅
-- Storage abstraction designed with minimal overhead (<5ms per operation) ✅
-- Build not applicable for backend-only service ✅
-
-All constitution principles remain satisfied. The detailed design reinforces
-compliance with all requirements.
+**Gate Status**: ✅ PASSED - All applicable constitution principles satisfied with concrete implementation plans
 
 ## Project Structure
 
@@ -84,51 +52,54 @@ specs/[###-feature]/
 ### Source Code (repository root)
 
 ```text
-src/
-├── api/
-│   ├── topics.ts          # HTTP endpoints for topic CRUD
-│   ├── websocket.ts       # WebSocket connection handling
-│   └── middleware.ts      # CORS, authentication middleware
-├── storage/
-│   ├── abstraction.ts     # Deno KV abstraction layer
-│   ├── topic-store.ts     # Topic data access layer
-│   └── types.ts           # Storage type definitions
-├── auth/
-│   ├── crypto.ts          # HMAC generation and verification
-│   └── types.ts           # Authentication type definitions
-├── models/
-│   └── topic.ts           # Topic domain models and validation
+server/
+├── main.ts              # Hono.js application entrypoint 
+├── routes/
+│   └── api/
+│       └── topics.ts    # Topic creation/management and WebSocket endpoints
 ├── services/
-│   ├── topic-service.ts   # Business logic for topics
-│   └── broadcast-service.ts # WebSocket message broadcasting
-├── utils/
-│   └── validation.ts      # Content validation utilities
-└── server.ts              # Main Hono application entry point
+│   ├── topic-service.ts # Topic business logic
+│   ├── auth-service.ts  # HMAC authentication
+│   └── broadcast-service.ts # BroadcastChannel message distribution
+├── models/
+│   └── topic.ts         # Topic data model  
+├── storage/
+│   ├── abstraction.ts   # Storage abstraction interface
+│   └── kv-storage.ts    # Deno KV implementation
+└── utils/
+    ├── crypto.ts        # HMAC and token utilities
+    └── validation.ts    # Input validation
 
 tests/
 ├── integration/
-│   ├── api-topics.test.ts      # HTTP API integration tests
-│   ├── websocket.test.ts       # WebSocket integration tests
-│   └── end-to-end.test.ts      # Full system tests
+│   ├── api-endpoints.test.ts
+│   ├── websocket-flow.test.ts
+│   └── topic-lifecycle.test.ts
 ├── unit/
-│   ├── auth.test.ts            # Authentication unit tests
-│   ├── storage.test.ts         # Storage abstraction tests
-│   └── services.test.ts        # Business logic tests
+│   ├── services/
+│   ├── models/
+│   └── utils/
 └── fixtures/
-    └── test-data.ts            # Test data and helpers
+    └── test-data.ts
 ```
 
-**Structure Decision**: Single project structure with clear separation of
-concerns. The API layer handles HTTP and WebSocket endpoints, storage layer
-provides Deno KV abstraction, auth layer manages HMAC security, and services
-layer contains business logic. This aligns with constitution requirements for
-Hono.js backend architecture and data storage abstraction.
+**Structure Decision**: Single backend project structure under `server/` directory following Hono.js patterns with clean separation of concerns. The main.ts entrypoint initializes the Hono application and configures all routes and middleware. Services layer handles business logic, models define data structures, storage provides KV abstraction, and utils contain shared functionality. WebSocket connections use BroadcastChannel for message distribution across Deno Deploy's edge runtime without connection tracking.
 
-## Complexity Tracking
+## Implementation Status
 
-> **Fill ONLY if Constitution Check has violations that must be justified**
+### Phase 0: Research ✅ Complete
+- Technical decisions documented in [research.md](./research.md)
+- All NEEDS CLARIFICATION items resolved
+- Technology choices validated against constitution
 
-| Violation                  | Why Needed         | Simpler Alternative Rejected Because |
-| -------------------------- | ------------------ | ------------------------------------ |
-| [e.g., 4th project]        | [current need]     | [why 3 projects insufficient]        |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient]  |
+### Phase 1: Design ✅ Complete  
+- Data models defined in [data-model.md](./data-model.md) 
+- API contracts specified in [contracts/](./contracts/)
+- Implementation guide available in [quickstart.md](./quickstart.md)
+- Agent context updated with new technology stack
+
+### Phase 2: Ready for Implementation
+- All planning artifacts complete
+- Constitution compliance verified
+- Project structure defined with server/ directory
+- Ready for development following quickstart guide

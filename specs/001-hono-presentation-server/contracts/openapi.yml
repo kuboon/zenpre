@@ -25,12 +25,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TopicCreated"
-        "500":
-          description: Server error during topic creation
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
 
   /api/topics/{topicId}:
     get:

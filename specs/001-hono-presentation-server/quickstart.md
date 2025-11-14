@@ -14,56 +14,44 @@
 ### 1. Project Structure
 
 ```bash
-# Create the project structure
-mkdir -p src/{api,storage,auth,models,services,utils}
+# Create the project structure under server/ directory
+mkdir -p server/{routes/{api},services,models,storage,utils}
 mkdir -p tests/{integration,unit,fixtures}
 
 # Core files
-touch src/server.ts
-touch src/api/{topics.ts,websocket.ts,middleware.ts}
-touch src/storage/{abstraction.ts,topic-store.ts,types.ts}
-touch src/auth/{crypto.ts,types.ts}
-touch src/models/topic.ts
-touch src/services/{topic-service.ts,broadcast-service.ts}
-touch src/utils/validation.ts
+touch server/main.ts
+touch server/routes/api/topics.ts
+touch server/services/{topic-service.ts,auth-service.ts,broadcast-service.ts}
+touch server/models/topic.ts
+touch server/storage/{abstraction.ts,kv-storage.ts}
+touch server/utils/{crypto.ts,validation.ts}
 ```
 
 ### 2. Development Dependencies
 
 ```bash
 deno add jsr:@hono/hono@^4.0.0
+deno add jsr:@std/encoding
 ```
 
 ### 3. Core Implementation
 
-#### Basic Server (`src/server.ts`)
+#### Basic Server (`server/main.ts`)
 
 ```typescript
 import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { topicsRouter } from "./api/topics.ts";
-import { websocketRouter } from "./api/websocket.ts";
+import { topicsRouter } from "./routes/api/topics.ts";
 
 const app = new Hono();
 
-// Middleware
-app.use(
-  "*",
-  cors({
-    allowHeaders: ["Content-Type"],
-    allowMethods: ["GET", "POST", "OPTIONS"],
-  }),
-);
-
 // Routes
 app.route("/api/topics", topicsRouter);
-app.route("/api/topics", websocketRouter);
 
 console.log("Server starting on http://localhost:8000");
 Deno.serve({ port: 8000 }, app.fetch);
 ```
 
-#### Topic Types (`src/models/topic.ts`)
+#### Topic Types (`server/models/topic.ts`)
 
 ```typescript
 export interface Topic {
@@ -86,7 +74,7 @@ export interface CreateTopicResponse extends TopicPair {
 export type AccessLevel = "readable" | "writable" | "invalid";
 ```
 
-#### Authentication (`src/auth/crypto.ts`)
+#### Authentication (`server/utils/crypto.ts`)
 
 ```typescript
 export async function generateTopic(): Promise<TopicPair> {
@@ -95,8 +83,8 @@ export async function generateTopic(): Promise<TopicPair> {
   const secretRaw = await crypto.subtle.sign("HMAC", key, topicIdRaw);
 
   return {
-    topicId: encodeBase64Url(topicIdRaw),
-    secret: encodeBase64Url(secretRaw),
+    topicId: encodeBytes(topicIdRaw),
+    secret: encodeBytes(secretRaw),
   };
 }
 
@@ -104,8 +92,8 @@ export async function verifyAccess(pair: TopicPair): Promise<AccessLevel> {
   if (!pair.secret) return "readable";
 
   try {
-    const topicIdRaw = decodeBase64Url(pair.topicId);
-    const secretRaw = decodeBase64Url(pair.secret);
+    const topicIdRaw = decodeToBytes(pair.topicId);
+    const secretRaw = decodeToBytes(pair.secret);
     const key = await getHmacKey();
     const verified = await crypto.subtle.verify(
       "HMAC",
@@ -120,12 +108,14 @@ export async function verifyAccess(pair: TopicPair): Promise<AccessLevel> {
 }
 
 // Helper functions
-function encodeBase64Url(bytes: ArrayBuffer): string {
-  // Implementation for base64url encoding
+import { encodeBase64Url, decodeBase64Url } from "jsr:@std/encoding/base64url";
+
+function encodeBytes(bytes: ArrayBuffer): string {
+  return encodeBase64Url(new Uint8Array(bytes));
 }
 
-function decodeBase64Url(str: string): Uint8Array {
-  // Implementation for base64url decoding
+function decodeToBytes(str: string): Uint8Array {
+  return decodeBase64Url(str);
 }
 
 async function getHmacKey() {
