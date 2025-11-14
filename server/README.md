@@ -1,142 +1,255 @@
-# Hono.js Server
+# Real-time Presentation Server
 
-This directory contains a Hono.js server with Zod validation and RPC
-capabilities.
+This is a Hono.js-based real-time presentation server with WebSocket pub-sub capabilities, implementing the specification from `specs/001-hono-presentation-server/`.
 
 ## Features
 
-- **Hono.js**: Fast, lightweight web framework for edge
-- **Zod**: TypeScript-first schema validation
-- **RPC**: Type-safe RPC using Hono's RPC client
+- **Topic Management**: Create presentation topics with unique IDs and authentication
+- **HMAC Authentication**: Secure publisher access using HMAC-SHA256
+- **WebSocket Real-time**: Real-time content synchronization via WebSocket
+- **Content Updates**: Broadcast markdown content to all connected participants
+- **Navigation Sync**: Synchronize page and section navigation
+- **Reactions**: Allow participants to send emoji reactions
+- **Storage Abstraction**: Deno KV with abstraction layer for future migration
+- **Auto-expiration**: Topics automatically expire after 30 days
 
-## File Structure
+## Architecture
 
 ```
 server/
-├── main.ts    # Main server file with API routes
-├── client.ts  # RPC client example
-└── README.md  # This file
+├── main.ts                      # Hono middleware export
+├── standalone.ts                # Standalone server runner
+├── routes/
+│   └── api/
+│       └── topics.ts            # HTTP/WebSocket endpoints
+├── services/
+│   ├── topic-service.ts         # Business logic
+│   └── broadcast-service.ts     # Message distribution
+├── models/
+│   └── topic.ts                 # Data models and types
+├── storage/
+│   ├── abstraction.ts           # Storage interface
+│   └── kv-storage.ts            # Deno KV implementation
+└── utils/
+    ├── crypto.ts                # HMAC authentication
+    └── validation.ts            # Input validation
 ```
 
-## Running the Server
+## Getting Started
 
-### Integrated Server (Recommended)
+### Prerequisites
 
-Run the Lume static site with Hono API middleware:
+- Deno 2.x runtime
+- Environment variable `HMAC_KEY` (optional, generates random key in development)
+
+### Running the Server
+
+#### Standalone Mode
 
 ```bash
-# First, build the static site
+deno run --allow-net --allow-env --unstable-kv server/standalone.ts
+```
+
+#### With Lume Integration
+
+```bash
+# Build the static site first
 deno task build
 
-# Then start the integrated server
+# Start integrated server (static + API)
 deno task serve
 ```
 
-The server will start on `http://localhost:8000` and serve:
+The server runs on `http://localhost:8000` with:
+- API endpoints at `/api/topics/*`
+- WebSocket connections at `ws://localhost:8000/api/topics/:topicId`
 
-- Static site files from `_site/`
-- API endpoints at `/api/*` (powered by Hono)
+## API Documentation
 
-### Standalone Hono Server
+### Create Topic
 
-You can also run just the Hono API server:
-
-```bash
-deno task server
-```
-
-The server will start on `http://localhost:8000`.
-
-## Running Tests
+Create a new presentation topic.
 
 ```bash
-# In one terminal, start the server
-deno task server
-
-# In another terminal, run the tests
-deno task server:test
+curl -X POST http://localhost:8000/api/topics
 ```
 
-Or use the provided test script that handles server startup:
-
-```bash
-deno run --allow-net --unsafely-ignore-certificate-errors server/test.ts
-```
-
-## API Endpoints
-
-### Root
-
-- `GET /` - Server information and available endpoints
-
-### Posts API
-
-- `POST /api/posts` - Create a new post
-  - Request body:
-    ```json
-    {
-      "title": "string (required)",
-      "content": "string (required)",
-      "published": "boolean (optional, default: false)"
-    }
-    ```
-
-- `GET /api/posts` - Get all posts
-- `GET /api/posts/:id` - Get a specific post by ID
-
-## Using the RPC Client
-
-The RPC client provides type-safe access to the API:
-
-```bash
-deno task server:client
-```
-
-Or in your code:
-
-```typescript
-import { hc } from "npm:hono@4.6.14/client";
-import type { AppType } from "./server/main.ts";
-
-const client = hc<AppType>("http://localhost:8000/api");
-
-// Create a post with type safety
-const response = await client.posts.$post({
-  json: {
-    title: "My Post",
-    content: "Post content",
-    published: true,
-  },
-});
-
-const result = await response.json();
-```
-
-## Validation
-
-All POST requests are validated using Zod schemas. Invalid requests will return
-a 400 error with details about the validation failure.
-
-Example validation error:
-
+**Response:**
 ```json
 {
-  "success": false,
-  "error": {
-    "issues": [
-      {
-        "path": ["title"],
-        "message": "Title is required"
-      }
-    ]
+  "topicId": "abc123def456ghi789jklm",
+  "secret": "xyz789abc123def456ghi789jklmnop123",
+  "subPath": "/api/topics/abc123def456ghi789jklm",
+  "pubPath": "/api/topics/abc123def456ghi789jklm?secret=xyz789abc123def456ghi789jklmnop123"
+}
+```
+
+### Get Topic Content
+
+Retrieve current presentation content (read-only access).
+
+```bash
+curl http://localhost:8000/api/topics/{topicId}
+```
+
+**Response:**
+```json
+{
+  "markdown": "# My Presentation\n\n## Content here",
+  "createdAt": "2025-11-14T10:00:00.000Z",
+  "updatedAt": "2025-11-14T10:15:00.000Z"
+}
+```
+
+### Update Topic Content
+
+Update presentation content (requires secret for write access).
+
+```bash
+curl -X POST \
+  "http://localhost:8000/api/topics/{topicId}?secret={secret}" \
+  -H "Content-Type: application/json" \
+  -d '{"markdown": "# Updated Content"}'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "updatedAt": "2025-11-14T10:16:00.000Z"
+}
+```
+
+## WebSocket Usage
+
+### Publisher Connection (with secret)
+
+```javascript
+const ws = new WebSocket(
+  "ws://localhost:8000/api/topics/{topicId}?secret={secret}"
+);
+
+ws.onopen = () => {
+  // Update content
+  ws.send(JSON.stringify({
+    markdown: "# Live Update"
+  }));
+
+  // Update navigation
+  ws.send(JSON.stringify({
+    currentPage: 1,
+    currentSection: 0
+  }));
+};
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log("Received:", data);
+};
+```
+
+### Subscriber Connection (without secret)
+
+```javascript
+const ws = new WebSocket(
+  "ws://localhost:8000/api/topics/{topicId}"
+);
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  
+  if (data.markdown) {
+    // Update presentation view
+    console.log("Content updated:", data.markdown);
+  }
+  
+  if (data.currentPage !== undefined) {
+    // Sync navigation
+    console.log("Page:", data.currentPage);
+  }
+  
+  if (data.pub?.reaction) {
+    // Display reaction
+    console.log("Reaction:", data.pub.reaction.emoji);
+  }
+};
+
+// Send reaction (available to all users)
+ws.send(JSON.stringify({
+  pub: {
+    reaction: {
+      emoji: "👍",
+      timestamp: Date.now()
+    }
+  }
+}));
+```
+
+## Message Types
+
+### Content Update (Publisher only)
+```json
+{
+  "markdown": "# Presentation content"
+}
+```
+
+### Navigation Update (Publisher only)
+```json
+{
+  "currentPage": 2,
+  "currentSection": 1
+}
+```
+
+### Reaction (All users)
+```json
+{
+  "pub": {
+    "reaction": {
+      "emoji": "👍",
+      "timestamp": 1699876543210
+    }
   }
 }
 ```
 
-## Development
+## Testing
 
-To add new endpoints:
+Run integration tests:
 
-1. Define a Zod schema for validation
-2. Add the route to the `apiRoutes` in `main.ts`
-3. The type will be automatically available in the RPC client
+```bash
+# Start the server in one terminal
+deno run --allow-net --allow-env --unstable-kv server/standalone.ts
+
+# Run tests in another terminal
+deno test --allow-net tests/integration/
+```
+
+## Security
+
+- **HMAC Authentication**: Topics use HMAC-SHA256 for publisher authentication
+- **Access Levels**: 
+  - `writable`: Full access with valid secret
+  - `readable`: Read-only access without secret
+  - `invalid`: Rejected with 403 for invalid secrets
+- **Content Limits**: 1MB maximum content size
+- **Auto-expiration**: Topics expire after 30 days
+
+## Environment Variables
+
+- `HMAC_KEY`: Base64url-encoded HMAC key for authentication (generates random key if not set)
+- `PORT`: Server port (default: 8000)
+
+## Constitution Compliance
+
+This implementation follows the ZenPre constitution:
+
+✅ **I. Modern Runtime Platform**: Uses Deno 2.x with Web standards (WebSocket, Web Crypto, BroadcastChannel)  
+✅ **III. Backend API Architecture**: Implements Hono.js with RESTful patterns and proper middleware  
+✅ **IV. Data Storage Abstraction**: Uses abstraction layer wrapping Deno KV for future migration  
+✅ **V. Japanese-First Development**: Error messages ready for Japanese localization
+
+## License
+
+See repository LICENSE file.
