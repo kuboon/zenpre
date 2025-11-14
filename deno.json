@@ -9,7 +9,7 @@
       "command": "deno task lume"
     },
     "serve": {
-      "description": "Run and serve the site for development",
+      "description": "Run the default Lume development server",
       "command": "deno task lume -s"
     }
   },
@@ -21,11 +21,15 @@
     "jsxImportSource": "lume"
   },
   "imports": {
+    "@hono/hono": "jsr:@hono/hono@^4.10.5",
+    "@hono/zod-validator": "jsr:@hono/zod-validator@^0.7.4",
     "lume/": "https://cdn.jsdelivr.net/gh/lumeland/lume@3.1.1/",
     "lume/cms/": "https://cdn.jsdelivr.net/gh/lumeland/cms@0.13.0/",
-    "lume/jsx-runtime": "https://cdn.jsdelivr.net/gh/oscarotero/ssx@0.1.12/jsx-runtime.ts"
+    "lume/jsx-runtime": "https://cdn.jsdelivr.net/gh/oscarotero/ssx@0.1.12/jsx-runtime.ts",
+    "zod": "npm:zod@^4.1.12"
   },
   "unstable": [
+    "bundle",
     "temporal",
     "fmt-component",
     "kv"
@@ -44,7 +48,8 @@
     "lume": {
       "read": true,
       "write": [
-        "./"
+        "./",
+        "$HOME/.cache/"
       ],
       "import": [
         "cdn.jsdelivr.net:443",
