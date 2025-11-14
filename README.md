@@ -7,6 +7,7 @@
 ## Running the Server
 
 This project includes an integrated server that combines:
+
 - **Lume** static site generator
 - **Hono.js** API server with Zod validation and RPC
 
@@ -21,6 +22,7 @@ deno task serve
 ```
 
 The server runs on `http://localhost:8000` and provides:
+
 - Static site at `/`
 - API endpoints at `/api/*`
 

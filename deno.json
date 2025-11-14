@@ -23,6 +23,7 @@
   "imports": {
     "@hono/hono": "jsr:@hono/hono@^4.10.5",
     "@hono/zod-validator": "jsr:@hono/zod-validator@^0.7.4",
+    "@std/encoding": "jsr:@std/encoding@^1.0.10",
     "lume/": "https://cdn.jsdelivr.net/gh/lumeland/lume@3.1.1/",
     "lume/cms/": "https://cdn.jsdelivr.net/gh/lumeland/cms@0.13.0/",
     "lume/jsx-runtime": "https://cdn.jsdelivr.net/gh/oscarotero/ssx@0.1.12/jsx-runtime.ts",
