@@ -46,7 +46,8 @@ Represents active real-time connection to a topic.
 
 ### Message
 
-Represents real-time messages broadcast between connections. (Use Deno native BroadcastChannel for distribution)
+Represents real-time messages broadcast between connections. (Use Deno native
+BroadcastChannel for distribution)
 
 **Fields**:
 

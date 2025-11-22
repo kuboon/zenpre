@@ -108,7 +108,7 @@ export async function verifyAccess(pair: TopicPair): Promise<AccessLevel> {
 }
 
 // Helper functions
-import { encodeBase64Url, decodeBase64Url } from "jsr:@std/encoding/base64url";
+import { decodeBase64Url, encodeBase64Url } from "jsr:@std/encoding/base64url";
 
 function encodeBytes(bytes: ArrayBuffer): string {
   return encodeBase64Url(new Uint8Array(bytes));
