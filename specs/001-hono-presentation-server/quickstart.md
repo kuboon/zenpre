@@ -5,13 +5,30 @@
 
 ## Prerequisites
 
-- Deno 2.x runtime installed
-- Basic understanding of TypeScript/JavaScript
-- WebSocket and HTTP API concepts
+```pseudocode
+REQUIRED:
+  - Deno 2.x runtime (installed)
+  - TypeScript/JavaScript basics
+  - WebSocket + HTTP API concepts
+```
 
 ## Development Setup
 
 ### 1. Project Structure
+
+```pseudocode
+CREATE directory_tree:
+  server/
+    ├─ routes/api/
+    ├─ services/
+    ├─ models/
+    ├─ storage/
+    └─ utils/
+  tests/
+    ├─ integration/
+    ├─ unit/
+    └─ fixtures/
+```
 
 ```bash
 # Create the project structure under server/ directory
@@ -127,6 +144,12 @@ async function getHmacKey() {
 
 ### 1. Create Presentation Topic
 
+```pseudocode
+CREATE topic:
+  POST /api/topics
+  ← {topicId, secret, subPath, pubPath}
+```
+
 ```bash
 # Create new topic
 curl -X POST http://localhost:8000/api/topics
@@ -165,6 +188,18 @@ curl http://localhost:8000/api/topics/abc123def456ghi789jklm
 ```
 
 ## WebSocket Usage
+
+```pseudocode
+CONNECTIONS:
+  Publisher (with secret):
+    ws = WebSocket(url + "?secret=" + secret)
+    ws.send({markdown, currentPage, currentSection})
+  
+  Subscriber (no secret):
+    ws = WebSocket(url)
+    ws.onmessage = (data) → update_UI(data)
+    ws.send({pub: {reaction: {emoji, timestamp}}})
+```
 
 ### JavaScript Client Example
 
@@ -228,15 +263,11 @@ subscriberWs.send(JSON.stringify({
 
 ### Run Tests
 
-```bash
-# Run all tests
-deno task test
-
-# Run specific test file
-deno test tests/integration/api-topics.test.ts
-
-# Watch mode during development
-deno task test:watch
+```pseudocode
+RUN tests:
+  all: deno task test
+  specific: deno test tests/integration/api-topics.test.ts
+  watch: deno task test:watch
 ```
 
 ### Basic Integration Test
@@ -274,30 +305,44 @@ Deno.test("Topic creation and retrieval", async () => {
 
 ### Production Environment Variables
 
-```bash
-# .env file
-HMAC_KEY=your-production-hmac-key-base64
-PORT=8000
-ENVIRONMENT=production
+```pseudocode
+ENV config (.env):
+  HMAC_KEY = your-production-hmac-key-base64
+  PORT = 8000
+  ENVIRONMENT = production
 ```
 
 ### Start Production Server
 
-```bash
-# With environment variables
-HMAC_KEY=your-key PORT=8000 deno run \
-  --allow-net \
-  --allow-env \
-  --unstable-kv \
-  src/server.ts
+```pseudocode
+RUN production:
+  WITH env_vars:
+    HMAC_KEY, PORT
+  
+  EXECUTE:
+    deno run \
+      --allow-net \
+      --allow-env \
+      --unstable-kv \
+      src/server.ts
 ```
 
 ## Development Workflow
 
-1. **Start Development Server**: `deno task dev`
-2. **Run Tests**: `deno task test:watch` (in separate terminal)
-3. **Create Topic**: Use curl or frontend client
-4. **Test WebSocket**: Connect with browser dev tools or WebSocket client
+```pseudocode
+WORKFLOW:
+  1. START dev_server:
+     deno task dev
+  
+  2. RUN tests (separate terminal):
+     deno task test:watch
+  
+  3. CREATE topic:
+     curl OR frontend_client
+  
+  4. TEST WebSocket:
+     browser_devtools OR WebSocket_client
+```
 5. **Validate Features**: Check real-time updates work between connections
 
 ## Next Steps

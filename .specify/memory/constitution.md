@@ -1,18 +1,15 @@
 <!--
   SYNC IMPACT REPORT
   ==================
-  Version change: INITIAL → 1.0.0
-  New constitution creation with 5 core principles:
-  - I. Modern Runtime Platform (Deno + JSR)
-  - II. Frontend Build System (Lume-based)
-  - III. Backend API Architecture (Hono.js)
-  - IV. Data Storage Abstraction (Deno KV with abstraction layer)
-  - V. Japanese-First Development
+  Version change: 1.0.0 → 1.0.1
+  Modified principles:
+  - All sections: Reformatted using pseudocode + bullet points per user request
+  - No semantic changes to principles
 
-  Templates requiring updates: ✅ reviewed, no changes needed
-  - .specify/templates/plan-template.md (Constitution Check section compatible)
-  - .specify/templates/spec-template.md (no direct constitution dependencies)
-  - .specify/templates/tasks-template.md (task organization aligns with principles)
+  Templates requiring updates: ✅ all reviewed
+  - .specify/templates/plan-template.md (compatible)
+  - .specify/templates/spec-template.md (compatible)
+  - .specify/templates/tasks-template.md (compatible)
 
   Follow-up TODOs: None
 -->
@@ -23,88 +20,175 @@
 
 ### I. Modern Runtime Platform
 
-All development MUST use Deno as the runtime environment with JSR as the primary
-package registry. Libraries and modules MUST be published to JSR for
-reusability. Node.js dependencies are discouraged unless absolutely necessary
-for interoperability. All code MUST leverage Deno's built-in capabilities
-(TypeScript, web standards, security model) rather than external polyfills.
+```pseudocode
+MUST use:
+  runtime = Deno
+  registry = JSR (primary)
+  
+MUST publish:
+  libraries → JSR
+  modules → JSR
 
-**Rationale**: Ensures modern development experience, security-first approach,
-and simplified dependency management through Deno's standards-compliant runtime.
+DISCOURAGED:
+  Node.js deps (unless interop required)
+  
+MUST leverage Deno built-ins:
+  - TypeScript (native)
+  - Web standards APIs
+  - Security model
+  - NO external polyfills
+```
+
+**Rationale**: Modern DX, security-first, simplified deps via
+standards-compliant runtime.
 
 ### II. Frontend Build System
 
-All frontend builds MUST use Lume as the static site generator. UI components
-MUST be built with JSX/TSX using Lume's plugin ecosystem. CSS MUST be processed
-through Tailwind CSS via Lume plugins. Frontend assets MUST be optimized through
-Lume's built-in transformation pipeline (images, scripts, styles).
+```pseudocode
+MUST use:
+  build_tool = Lume (static site generator)
+  
+MUST build UI with:
+  - JSX/TSX via Lume plugins
+  
+MUST process CSS:
+  - Tailwind CSS via Lume plugins
+  
+MUST optimize assets via Lume pipeline:
+  - images
+  - scripts
+  - styles
+```
 
-**Rationale**: Provides consistent, optimized build process while maintaining
-simplicity and leveraging Deno ecosystem integration.
+**Rationale**: Consistent optimized builds, simplicity, Deno ecosystem
+integration.
 
 ### III. Backend API Architecture
 
-All backend APIs MUST be implemented using Hono.js framework. APIs MUST follow
-RESTful principles or documented RPC patterns. Middleware MUST be used for
-cross-cutting concerns (authentication, logging, validation). API responses MUST
-be consistently structured with proper HTTP status codes and error handling.
+```pseudocode
+MUST implement APIs:
+  framework = Hono.js
+  
+MUST follow:
+  - RESTful principles OR
+  - Documented RPC patterns
+  
+MUST use middleware for:
+  - authentication
+  - logging
+  - validation
+  
+API responses MUST have:
+  - Consistent structure
+  - Proper HTTP status codes
+  - Error handling
+```
 
-**Rationale**: Ensures lightweight, performant API layer with consistent
-patterns and excellent TypeScript support within the Deno ecosystem.
+**Rationale**: Lightweight, performant API layer with TypeScript support in Deno
+ecosystem.
 
 ### IV. Data Storage Abstraction
 
-All data access MUST go through an abstraction layer that wraps Deno KV. Direct
-Deno KV calls are prohibited in business logic; only the data access layer may
-interact with KV directly. The abstraction MUST support easy migration to
-alternative storage solutions. Data models MUST be strongly typed with
-validation at the abstraction boundary.
+```pseudocode
+ALL data access:
+  business_logic → abstraction_layer → Deno KV
+  
+PROHIBITED:
+  business_logic → Deno KV (direct)
+  
+abstraction_layer MUST support:
+  - Migration to alternative storage
+  - Strong typing
+  - Validation at boundary
+  
+ONLY abstraction_layer MAY:
+  - Call Deno KV directly
+```
 
-**Rationale**: Enables future migration to different storage solutions while
-maintaining clean separation of concerns and testability.
+**Rationale**: Future migration capability, clean separation, testability.
 
 ### V. Japanese-First Development
 
-Primary user interface and documentation MUST be in Japanese. Code comments and
-commit messages MAY be in English for international collaboration. User-facing
-error messages MUST be in Japanese. Internationalization support is optional
-unless explicitly required.
+```pseudocode
+MUST be in Japanese:
+  - Primary UI
+  - User-facing docs
+  - Error messages (user-facing)
+  
+MAY be in English:
+  - Code comments (for intl collab)
+  - Commit messages (for intl collab)
+  
+OPTIONAL:
+  - i18n support (unless explicitly required)
+```
 
-**Rationale**: Serves the primary target audience effectively while maintaining
-developer productivity and international contribution capability.
+**Rationale**: Primary audience effectiveness + international contribution
+capability.
 
 ## Technology Constraints
 
-**Required Stack**: Deno runtime, JSR package registry, Lume for frontend
-builds, Hono.js for backend APIs, Deno KV for storage, TypeScript for type
-safety.
+```pseudocode
+REQUIRED stack = {
+  runtime: Deno,
+  registry: JSR,
+  frontend: Lume,
+  backend: Hono.js,
+  storage: Deno KV,
+  types: TypeScript
+}
 
-**Forbidden**: Node.js runtime in production, direct database access bypassing
-abstraction layer, frontend frameworks other than Lume's JSX implementation.
+FORBIDDEN = {
+  Node.js in production,
+  Direct DB access (bypass abstraction),
+  Frontend frameworks ≠ Lume JSX
+}
 
-**Performance Standards**: Frontend builds MUST complete under 10 seconds, API
-responses MUST have p95 latency under 200ms, storage abstraction MUST add less
-than 5ms overhead per operation.
+PERFORMANCE thresholds:
+  frontend_build_time < 10s
+  api_p95_latency < 200ms
+  storage_abstraction_overhead < 5ms
+```
 
 ## Development Workflow
 
-All features MUST follow the specification-driven development process defined in
-project templates. Code MUST pass TypeScript compilation without errors. Deno
-formatting and linting MUST be enforced in CI/CD pipeline.
-
-Feature branches MUST include both frontend and backend components when
-applicable. Data model changes MUST include migration strategy through the
-storage abstraction layer.
+```pseudocode
+FOR each feature:
+  MUST follow spec-driven process (project templates)
+  MUST pass TypeScript compilation (0 errors)
+  MUST pass Deno fmt + lint (CI/CD enforced)
+  
+  IF has_frontend AND has_backend:
+    branch MUST include both components
+    
+  IF data_model_changes:
+    MUST include migration_strategy via abstraction_layer
+```
 
 ## Governance
 
-This constitution supersedes all other development practices and decisions.
-Amendments require explicit documentation of breaking changes, migration path,
-and approval through pull request review. All feature implementations MUST
-verify compliance with these principles before merging.
+```pseudocode
+constitution.precedence = MAX (supersedes all practices)
 
-Complexity that violates these principles MUST be explicitly justified with
-technical reasoning and approved by maintainers. When in doubt, choose the
-solution that best aligns with Deno ecosystem patterns and Japanese user needs.
+FOR amendment:
+  MUST document:
+    - Breaking changes
+    - Migration path
+  MUST get:
+    - PR review approval
+    
+FOR feature_implementation:
+  MUST verify constitution_compliance BEFORE merge
+  
+IF violates_principles:
+  MUST provide:
+    - Technical justification
+    - Maintainer approval
+    
+WHEN in_doubt:
+  CHOOSE solution WITH:
+    - MAX(alignment_to_deno_patterns)
+    - MAX(japanese_user_fit)
+```
 
-**Version**: 1.0.0 | **Ratified**: 2025-11-13 | **Last Amended**: 2025-11-13
+**Version**: 1.0.1 | **Ratified**: 2025-11-13 | **Last Amended**: 2025-11-22

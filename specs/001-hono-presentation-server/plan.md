@@ -9,46 +9,76 @@
 
 ## Summary
 
-Implement a real-time presentation server that replicates deno-pubsub
-functionality using Hono.js framework. The system provides WebSocket-based
-pub-sub for markdown content synchronization between presenters and
-participants, with HMAC-based authentication for topic management and Deno KV
-for data persistence.
+```pseudocode
+IMPLEMENT realtime_presentation_server:
+  replicate: deno-pubsub functionality
+  framework: Hono.js
+  
+  features = {
+    WebSocket pub-sub: markdown content sync,
+    auth: HMAC-based topic management,
+    storage: Deno KV (presenter ↔ participants)
+  }
+```
 
 ## Technical Context
 
-**Language/Version**: TypeScript with Deno 2.x runtime\
-**Primary Dependencies**: Hono.js for HTTP/WebSocket API, Deno KV for storage,
-Web Crypto API for HMAC authentication\
-**Storage**: Deno KV with abstraction layer for future migration capability\
-**Testing**: Deno test framework with WebSocket testing utilities\
-**Target Platform**: Deno runtime environment (cross-platform server
-deployment)\
-**Project Type**: Backend API server with real-time WebSocket capabilities\
-**Performance Goals**: Support 50+ concurrent WebSocket connections per topic,
-<100ms message propagation, <200ms API response times\
-**Constraints**: Follow ZenPre constitution, use only Deno ecosystem, implement
-storage abstraction layer\
-**Scale/Scope**: Medium-scale real-time application supporting multiple
-concurrent presentation sessions
+```pseudocode
+STACK:
+  runtime: Deno 2.x + TypeScript
+  dependencies: {
+    Hono.js: HTTP/WebSocket API,
+    Deno KV: storage,
+    Web Crypto API: HMAC auth
+  }
+  storage: Deno KV WITH abstraction_layer (future migration)
+  testing: Deno test + WebSocket utilities
+  platform: Deno runtime (cross-platform server)
+  project_type: backend API + realtime WebSocket
+  
+GOALS:
+  concurrent_connections: 50+ per topic
+  message_propagation: <100ms
+  api_response: <200ms
+  
+CONSTRAINTS:
+  - Follow ZenPre constitution
+  - Deno ecosystem only
+  - Storage abstraction layer MUST
+  
+SCOPE: medium-scale realtime app
+       (multiple concurrent presentation sessions)
+```
 
 ## Constitution Check
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-✅ **I. Modern Runtime Platform**: Using Deno 2.x runtime with TypeScript,
-leveraging built-in Web APIs (WebSocket, Web Crypto, BroadcastChannel, Deno KV)
-✅ **III. Backend API Architecture**: Implementing with Hono.js framework
-following RESTful principles with proper middleware and error handling ✅ **IV.
-Data Storage Abstraction**: Implemented StorageAbstraction<T> interface wrapping
-Deno KV as documented in data-model.md ✅ **V. Japanese-First Development**:
-Error messages and user-facing content configured for Japanese language
+```pseudocode
+CHECK constitution_compliance:
+  ✓ I. Modern Runtime Platform:
+      runtime = Deno 2.x + TypeScript
+      APIs = Web standards (WebSocket, Web Crypto, BroadcastChannel, Deno KV)
+      
+  ✓ III. Backend API Architecture:
+      framework = Hono.js
+      patterns = RESTful + middleware + error_handling
+      
+  ✓ IV. Data Storage Abstraction:
+      interface = StorageAbstraction<T>
+      implementation = wraps Deno KV
+      documented_in = data-model.md
+      
+  ✓ V. Japanese-First Development:
+      error_messages = Japanese
+      user_facing_content = Japanese
+      
+  ✗ II. Frontend Build System:
+      reason = backend-only (not applicable)
 
-❓ **II. Frontend Build System**: Not applicable - this is backend-only server
-implementation
-
-**Gate Status**: ✅ PASSED - All applicable constitution principles satisfied
-with concrete implementation plans
+GATE status: ✓ PASSED
+  (all applicable principles satisfied)
+```
 
 ## Project Structure
 
