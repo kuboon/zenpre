@@ -1,6 +1,6 @@
 import lume from "lume/mod.ts";
-import bundle from "./lume/bundle.ts";
 import date from "lume/plugins/date.ts";
+import esbuild from "lume/plugins/esbuild.ts";
 import favicon from "lume/plugins/favicon.ts";
 import feed from "lume/plugins/feed.ts";
 // import filter_pages from "lume/plugins/filter_pages.ts";
@@ -31,7 +31,7 @@ const site = lume({
 });
 
 site.use(date());
-site.use(bundle());
+site.use(esbuild());
 site.use(favicon());
 site.use(jsx());
 site.use(tailwindcss());

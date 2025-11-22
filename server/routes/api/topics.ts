@@ -46,7 +46,6 @@ export const topicsRouter = new Hono()
       return c.json({ error: "Failed to create topic" }, 500);
     }
   })
-
   // Get topic content or upgrade to WebSocket
   .get("/:topicId", async (c: Context) => {
     const topicId = c.req.param("topicId");
@@ -81,7 +80,6 @@ export const topicsRouter = new Hono()
       return c.json({ error: "Failed to retrieve topic" }, 500);
     }
   })
-
   // Update topic content
   .post(
     "/:topicId",
@@ -113,7 +111,9 @@ export const topicsRouter = new Hono()
           updatedAt: new Date().toISOString(),
         }, 201);
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = error instanceof Error
+          ? error.message
+          : "Unknown error";
 
         if (message.includes("not found")) {
           return c.json({ error: "Topic not found" }, 404);

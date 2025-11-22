@@ -9,7 +9,7 @@ const BASE_URL = "http://localhost:8000";
 const API_URL = `${BASE_URL}/api/topics`;
 
 console.log("🎯 Real-time Presentation Server Demo\n");
-console.log("=" .repeat(60));
+console.log("=".repeat(60));
 
 // Step 1: Create a topic
 console.log("\n📝 Step 1: Creating a new presentation topic...");

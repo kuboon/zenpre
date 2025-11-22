@@ -30,6 +30,8 @@ app.route("/api/topics", topicsRouter);
 const port = parseInt(Deno.env.get("PORT") || "8000");
 
 console.log(`🚀 Server starting on http://localhost:${port}`);
-console.log(`📡 WebSocket endpoint: ws://localhost:${port}/api/topics/:topicId`);
+console.log(
+  `📡 WebSocket endpoint: ws://localhost:${port}/api/topics/:topicId`,
+);
 
 Deno.serve({ port }, app.fetch);
