@@ -5,7 +5,10 @@
  * This demonstrates all features: REST API, Zod validation, and RPC
  */
 
-import { assertEquals, assertExists } from "https://deno.land/std@0.208.0/assert/mod.ts";
+import {
+  assertEquals,
+  assertExists,
+} from "https://deno.land/std@0.208.0/assert/mod.ts";
 
 const BASE_URL = "http://localhost:8000";
 const API_URL = `${BASE_URL}/api`;
@@ -17,7 +20,7 @@ async function waitForServer(maxAttempts = 10): Promise<boolean> {
       const response = await fetch(BASE_URL);
       if (response.ok) return true;
     } catch {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }
   return false;
@@ -129,11 +132,11 @@ console.log("\n" + "=".repeat(50) + "\n");
 console.log("Test 6: RPC Client (Type-safe client)");
 try {
   const { hc } = await import("npm:hono@4.6.14/client");
-  
+
   // Import type only - we need to use dynamic import with type parameter
   // The type is exported from main.ts but we can't import it without running the server
   const client = hc(`${API_URL}`);
-  
+
   const createResponse = await client.posts.$post({
     json: {
       title: "RPC Test Post",
@@ -141,14 +144,16 @@ try {
       published: false,
     },
   });
-  
+
   const createData = await createResponse.json();
   assertEquals(createResponse.status, 201);
   assertEquals(createData.success, true);
-  
+
   console.log("✅ RPC client works with type safety");
   console.log("   Response:", JSON.stringify(createData, null, 2));
-  console.log("   Note: In actual TypeScript code, you would import the AppType for full type safety");
+  console.log(
+    "   Note: In actual TypeScript code, you would import the AppType for full type safety",
+  );
 } catch (error) {
   console.error("❌ RPC client test failed:", error);
   Deno.exit(1);

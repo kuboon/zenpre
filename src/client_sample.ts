@@ -16,16 +16,16 @@ export async function exampleUsage() {
         published: true,
       },
     });
-    
+
     const createResult = await createResponse.json();
     console.log("Created post:", createResult);
-    
+
     // Get all posts
     console.log("\nFetching all posts...");
     const listResponse = await client.posts.$get();
     const listResult = await listResponse.json();
     console.log("Posts:", listResult);
-    
+
     // Get a specific post
     console.log("\nFetching specific post...");
     const getResponse = await client.posts[":id"].$get({
