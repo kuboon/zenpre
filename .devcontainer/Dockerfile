@@ -1,5 +1,4 @@
-# [Choice] Debian OS version: bullseye, buster
-FROM mcr.microsoft.com/devcontainers/base:1-bookworm
+FROM mcr.microsoft.com/devcontainers/base:debian
 
 USER vscode
 ENV DENO_INSTALL=/home/vscode/deno

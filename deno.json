@@ -1,32 +1,11 @@
 {
   "tasks": {
-    "lume": {
-      "description": "Run Lume command",
-      "command": "deno run --env -P=lume lume/cli.ts"
-    },
-    "build": {
-      "description": "Build the site for production",
-      "command": "deno task lume"
-    },
-    "serve": {
-      "description": "Run the default Lume development server",
-      "command": "deno task lume -s"
-    }
+    "lint": "deno fmt && deno lint && deno check",
+    "check": "deno lint && deno check && deno fmt --check"
   },
-  "compilerOptions": {
-    "types": [
-      "lume/types.ts"
-    ],
-    "jsx": "react-jsx",
-    "jsxImportSource": "lume"
-  },
+  "workspace": ["./server", "./lume"],
   "imports": {
-    "@hono/hono": "jsr:@hono/hono@^4.10.5",
-    "@hono/zod-validator": "jsr:@hono/zod-validator@^0.7.4",
-    "lume/": "https://cdn.jsdelivr.net/gh/lumeland/lume@3.1.1/",
-    "lume/cms/": "https://cdn.jsdelivr.net/gh/lumeland/cms@0.13.0/",
-    "lume/jsx-runtime": "https://cdn.jsdelivr.net/gh/oscarotero/ssx@0.1.12/jsx-runtime.ts",
-    "zod": "npm:zod@^4.1.12"
+    "@hono/hono": "jsr:@hono/hono@^4.10.5"
   },
   "unstable": [
     "bundle",
@@ -34,41 +13,9 @@
     "fmt-component",
     "kv"
   ],
-  "lint": {
-    "plugins": [
-      "https://cdn.jsdelivr.net/gh/lumeland/lume@3.1.1/lint.ts"
-    ],
-    "rules": {
-      "exclude": [
-        "no-import-prefix"
-      ]
-    }
-  },
-  "permissions": {
-    "lume": {
-      "read": true,
-      "write": [
-        "./",
-        "$HOME/.cache/"
-      ],
-      "import": [
-        "cdn.jsdelivr.net:443",
-        "jsr.io:443",
-        "deno.land:443",
-        "esm.sh:443"
-      ],
-      "net": [
-        "0.0.0.0",
-        "jsr.io:443",
-        "cdn.jsdelivr.net:443",
-        "data.jsdelivr.com:443",
-        "registry.npmjs.org:443"
-      ],
-      "env": true,
-      "run": true,
-      "ffi": true,
-      "sys": true
-    }
-  },
-  "lock": false
+  "allowScripts": {
+    "deny": [
+      "npm:sharp"
+    ]
+  }
 }

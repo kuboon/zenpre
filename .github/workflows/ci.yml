@@ -1,4 +1,4 @@
-name: Build lume and deploy to Pages
+name: CI
 
 on:
   # Runs on pushes targeting the default branch
@@ -17,13 +17,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  test:
     permissions:
       contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Deno environment
         uses: denoland/setup-deno@v1
         with:
@@ -36,25 +36,4 @@ jobs:
         with:
           path: ${{ steps.deno-dir.outputs.denoDir }}
           key: ${{ runner.os }}-deno
-      - name: Configure Pages
-        id: configure
-        uses: actions/configure-pages@v4
-      - name: lume build
-        run: deno task build --location=${{steps.configure.outputs.base_url}}
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: "_site"
-  deploy:
-    needs: build
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - run: deno task check

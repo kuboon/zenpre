@@ -1,5 +1,5 @@
 import lume from "lume/mod.ts";
-import bundle from "./lume/bundle.ts";
+import bundle from "./bundle.ts";
 import date from "lume/plugins/date.ts";
 import favicon from "lume/plugins/favicon.ts";
 import feed from "lume/plugins/feed.ts";
@@ -18,14 +18,14 @@ import sitemap from "lume/plugins/sitemap.ts";
 import source_maps from "lume/plugins/source_maps.ts";
 import transformImages from "lume/plugins/transform_images.ts";
 import vento from "lume/plugins/vento.ts";
-import { myServer } from "./server/main.ts";
+import { middleware } from "../server/lume.ts";
 
 const site = lume({
   prettyUrls: false,
   src: "src",
   server: {
-    middlewares: [myServer]
-  }
+    middlewares: [middleware()],
+  },
 }, {
   markdown: { options: { breaks: true }, plugins: [] },
 });
@@ -38,6 +38,7 @@ site.use(tailwindcss());
 site.use(source_maps());
 site.use(picture());
 site.use(transformImages());
+site.use(metas());
 site.use(inline());
 site.use(feed({
   output: ["feed.rss", "feed.json"],
@@ -48,7 +49,6 @@ site.use(feed({
   },
 }));
 // site.use(filter_pages({}));
-site.use(metas());
 // site.use(modifyUrls({
 //   fn: (url: string) => url.replace(/\.html$/, ""),
 // }))

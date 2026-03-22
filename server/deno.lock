@@ -1,0 +1,28 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@hono/hono@^4.8.3": "4.12.8",
+    "jsr:@hono/standard-validator@~0.2.2": "0.2.2",
+    "jsr:@standard-schema/spec@1": "1.1.0"
+  },
+  "jsr": {
+    "@hono/hono@4.12.8": {
+      "integrity": "1997fde8abf28e84d821c9c867229be020e268d4749397aec071305bf54db297"
+    },
+    "@hono/standard-validator@0.2.2": {
+      "integrity": "bc94e1ab41d677a571cb6dd5012823f1162b9856ca24dfd60233734824bb0b0c",
+      "dependencies": [
+        "jsr:@hono/hono",
+        "jsr:@standard-schema/spec"
+      ]
+    },
+    "@standard-schema/spec@1.1.0": {
+      "integrity": "2ccd54513cd9c960bd155ab569b1a901bc99c6f9ad29559d3f38a28c91c1822d"
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@hono/standard-validator@~0.2.2"
+    ]
+  }
+}
