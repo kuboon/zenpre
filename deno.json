@@ -3,9 +3,10 @@
     "lint": "deno fmt && deno lint && deno check",
     "check": "deno lint && deno check && deno fmt --check"
   },
-  "workspace": ["./server", "./lume"],
+  "workspace": ["./typia", "./server", "./lume"],
   "imports": {
-    "@hono/hono": "jsr:@hono/hono@^4.10.5"
+    "@hono/hono": "jsr:@hono/hono@^4.10.5",
+    "lume/jsx-runtime": "https://cdn.jsdelivr.net/gh/oscarotero/ssx@0.1.14/jsx-runtime.ts"
   },
   "unstable": [
     "bundle",
@@ -17,5 +18,6 @@
     "deny": [
       "npm:sharp"
     ]
-  }
+  },
+  "nodeModulesDir": "auto"
 }
