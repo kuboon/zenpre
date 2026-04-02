@@ -72,7 +72,7 @@ function getCodeInfo(
   return { lang, code };
 }
 
-export default async function markdownToHtml(
+async function markdownToHtml(
   markdown: string,
 ): Promise<string> {
   const highlighter = await getHighlighter();
@@ -122,3 +122,11 @@ export default async function markdownToHtml(
 
   return String(file);
 }
+
+class MarkdownRenderer extends HTMLDivElement {
+  async connectedCallback() {
+    const markdown = this.querySelector("template")?.innerHTML ?? "";
+    this.querySelector("#rendered")!.innerHTML = await markdownToHtml(markdown);
+  }
+}
+customElements.define("markdown-renderer", MarkdownRenderer, { extends: "div" });

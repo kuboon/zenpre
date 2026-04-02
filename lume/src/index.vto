@@ -3,20 +3,14 @@ title: ZENPRE
 subtitle: AI時代のプレゼンツール
 ---
 
-<template id="markdown">
-{{ index }}
-</template>
+<script type="module" src="./markdown.js"></script>
 
-<div class="mockup-phone 90vh">
+<div class="mockup-phone h-[90dvh] w-[50dvh]">
   <div class="mockup-phone-camera"></div>
-  <div class="mockup-phone-display grid place-content-center bg-white">
-    <div id="render" class="prose"></div>
+  <div class="mockup-phone-display grid bg-white">
+    <div is="markdown-renderer" class="w-full h-full p-4 overflow-y-auto">
+      <template id="markdown">{{ index }}</template>
+      <div id="rendered" class="prose pt-8"></div>
+    </div>
   </div>
 </div>
-
-
-<script type="module">
-  import markdownToHtml from "./markdown.js";
-  const md = document.getElementById("markdown").innerHTML
-  document.getElementById("render").innerHTML = await markdownToHtml(md)
-</script>
