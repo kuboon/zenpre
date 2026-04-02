@@ -5,6 +5,8 @@
   },
   "imports": {
     "@hono/standard-validator": "jsr:@hono/standard-validator@^0.2.2",
-    "arktype": "npm:arktype@^2.2.0"
+    "@std/assert": "jsr:@std/assert@^1.0.19",
+    "@std/encoding": "jsr:@std/encoding@^1.0.10",
+    "@std/ulid": "jsr:@std/ulid@^1.0.0"
   }
 }

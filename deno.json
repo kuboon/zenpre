@@ -3,10 +3,12 @@
     "lint": "deno fmt && deno lint && deno check",
     "check": "deno lint && deno check && deno fmt --check"
   },
-  "workspace": ["./typia", "./server", "./lume"],
+  "workspace": ["./server", "./lume"],
   "imports": {
+    "#/": "./",
     "@hono/hono": "jsr:@hono/hono@^4.10.5",
-    "lume/jsx-runtime": "https://cdn.jsdelivr.net/gh/oscarotero/ssx@0.1.14/jsx-runtime.ts"
+    "lume/jsx-runtime": "https://cdn.jsdelivr.net/gh/oscarotero/ssx@0.1.14/jsx-runtime.ts",
+    "arktype": "npm:arktype@^2.2.0"
   },
   "unstable": [
     "bundle",

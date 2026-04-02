@@ -73,21 +73,16 @@ type Env = {
   Bindings: { DATABASE: D1Database; KV: KVNamespace };
   Variables: { user: User };
 };
-const app = new Hono<Env>();
-```
-
-### Routing Methods
-
-```ts
-app.get("/path", handler);
-app.post("/path", handler);
-app.put("/path", handler);
-app.delete("/path", handler);
-app.patch("/path", handler);
-app.options("/path", handler);
-app.all("/path", handler); // all HTTP methods
-app.on("PURGE", "/path", handler); // custom method
-app.on(["PUT", "DELETE"], "/path", handler); // multiple methods
+const app = new Hono<Env>()
+.get("/path", handler);
+.post("/path", handler);
+.put("/path", handler);
+.delete("/path", handler);
+.patch("/path", handler);
+.options("/path", handler);
+.all("/path", handler); // all HTTP methods
+.on("PURGE", "/path", handler); // custom method
+.on(["PUT", "DELETE"], "/path", handler); // multiple methods
 ```
 
 ### Routing Patterns
@@ -156,11 +151,12 @@ app.onError((err, c) => {
 
 ```ts
 c.text("Hello"); // text/plain
-c.json({ message: "Hello" }); // application/json
+Response.json({ message: "Hello" }); // application/json
 c.html("<h1>Hello</h1>"); // text/html
 c.redirect("/new-path"); // 302 redirect
 c.redirect("/new-path", 301); // 301 redirect
 c.body("raw body", 200, headers); // raw response
+c.body(null, 204); // no content
 c.notFound(); // 404 response
 ```
 
