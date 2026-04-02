@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
-@plugin "daisyui@5.0.50" {
+@plugin "daisyui" {
   themes: retro, valentine;
 }
 

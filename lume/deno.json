@@ -13,6 +13,10 @@
     "serve": {
       "description": "Run the default Lume development server",
       "command": "deno task lume -s"
+    },
+    "test": {
+      "description": "Run tests with test permission profile",
+      "command": "deno test -P"
     }
   },
   "compilerOptions": {
@@ -23,9 +27,14 @@
     "jsxImportSource": "lume"
   },
   "imports": {
+    "daisyui": "npm:daisyui@^5.5.19",
     "lume/": "https://cdn.jsdelivr.net/gh/lumeland/lume@3.2.2/",
     "lume/cms/": "https://cdn.jsdelivr.net/gh/lumeland/cms@0.14.16/",
-    "lume/jsx-runtime": "https://cdn.jsdelivr.net/gh/oscarotero/ssx@0.1.14/jsx-runtime.ts"
+    "lume/jsx-runtime": "https://cdn.jsdelivr.net/gh/oscarotero/ssx@0.1.14/jsx-runtime.ts",
+    "tailwindcss": "npm:tailwindcss@^4.2.2"
+  },
+  "fmt": {
+    "exclude": ["**/*.vto"]
   },
   "lint": {
     "plugins": [
@@ -41,8 +50,9 @@
     "lume": {
       "read": true,
       "write": [
-        "./",
-        "$HOME/.cache/"
+        "../",
+        "$HOME/.cache/",
+        "$DENO_DIR/"
       ],
       "import": [
         "cdn.jsdelivr.net:443",
@@ -54,13 +64,22 @@
         "0.0.0.0",
         "jsr.io:443",
         "cdn.jsdelivr.net:443",
+        "esm.sh:443",
         "data.jsdelivr.com:443",
         "registry.npmjs.org:443"
       ],
-      "env": true,
+      "env": {
+        "allow": [
+          "DENO_DIR"
+        ],
+        "ignore": true
+      },
       "run": true,
       "ffi": true,
       "sys": true
     }
+  },
+  "test": {
+    "permissions": "lume"
   }
 }

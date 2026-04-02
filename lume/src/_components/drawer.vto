@@ -1,0 +1,36 @@
+---
+menu:
+  - name: Home
+    url: /
+  - name: New Slide
+    url: /slide/new
+  - name: New On Air
+    url: /onair/new
+  - name: About
+    url: /about
+---
+<div class="drawer drawer-end lg:drawer-open">
+  <input id="my-drawer" type="checkbox" class="drawer-toggle" />
+  <div class="drawer-content">
+    {{ content }}
+  </div>
+  <div class="drawer-side">
+    <label
+      for="my-drawer"
+      aria-label="close sidebar"
+      class="drawer-overlay"
+    ></label>
+    <ul class="menu bg-base-200 min-h-full w-80 p-4 max-lg:pt-16">
+      <li><div id="search"></div></li>
+      <br class="mt-4" />
+      <!-- Sidebar content here -->
+      {{ for item of menu }}
+        <li>
+          <a href="{{ item.url |> url }}">
+            {{ item.name }}
+          </a>
+        </li>
+      {{ /for }}
+    </ul>
+  </div>
+</div>
