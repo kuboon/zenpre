@@ -11,8 +11,6 @@ export async function exampleUsage() {
     console.log("Creating a new post...");
     const createResponse = await client.slide.$post({
       json: {
-        id: "abc123",
-        key: "my-first-post",
         title: "My First Post",
         markdown: "This is the content of my first post.",
         css: "body { background-color: #f0f0f0; }",

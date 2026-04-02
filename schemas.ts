@@ -1,23 +1,15 @@
 import { type } from "arktype";
 
-export const NewSlideSchema = type({
+export const SlideSchema = type({
   title: "string",
   markdown: "string",
   css: "string",
 });
-export const SlideSchema = NewSlideSchema.merge({
-  id: "string",
-  key: "string?",
-});
 
-export const NewOnAirSchema = type({
+export const OnAirSchema = type({
   slide_id: "string",
   begin_at: "string",
   end_at: "string",
-});
-export const OnAirSchema = NewOnAirSchema.merge({
-  id: "string",
-  key: "string?",
 });
 
 export const ActionSchemas = {

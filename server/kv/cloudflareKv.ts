@@ -1,4 +1,6 @@
+import { memcache } from "#/server/kv/memcache.ts";
 import type {
+  KvEntryInterface,
   KvKey,
   KvKeyPart,
   KvOptions,
@@ -27,7 +29,6 @@ export type CloudflareKvNamespace = {
 };
 
 const expireIn = 40 * 60 * 1000; // 40分
-const memoryCache = new Map<string, { data: unknown; expireAt: number }>();
 const locks = new Map<string, Promise<void>>();
 
 function serializePart(part: unknown): string {
@@ -74,123 +75,83 @@ async function withKeyLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
   }
 }
 
-export class CloudflareKvRepo<T> implements KvRepo<T> {
+export class CloudflareKvRepo<TVal>
+  implements KvRepo<TVal, KvKeyPart, KvOptions> {
   constructor(
     private namespace: CloudflareKvNamespace,
     public prefix: KvKey = [],
-  ) {}
+    public options: KvOptions = {},
+  ) {
+  }
 
-  entry<TEntryVal = T>(key_: KvKey, options?: KvOptions) {
-    const key = [...this.prefix, ...key_];
+  genKey(): string {
+    return monotonicUlid();
+  }
+
+  entry<TEntryVal = TVal>(
+    key: KvKeyPart,
+  ): KvEntryInterface<TEntryVal, KvKeyPart, KvOptions> {
+    const fullKey = [...this.prefix, key];
+    const strKey = keyToString(fullKey);
     const namespace = this.namespace;
-    const strKey = keyToString(key);
+    const repoOptions = this.options;
     return {
       key,
+      fullKey,
       async get(): Promise<TEntryVal | null> {
-        const cached = memoryCache.get(strKey);
-        if (cached) {
-          if (Date.now() < cached.expireAt) {
-            return cached.data as TEntryVal;
-          }
-          memoryCache.delete(strKey);
-        }
-        const value = await namespace.get(strKey, "json") as TEntryVal | null;
-        if (value !== null) {
-          memoryCache.set(strKey, {
-            data: value,
-            expireAt: Date.now() + (options?.expireIn ?? expireIn),
-          });
-        }
-        return value;
-      },
-      async set(value: TEntryVal, setOptions?: KvOptions): Promise<void> {
-        const expireInMs = setOptions?.expireIn ?? options?.expireIn ??
-          expireIn;
-        memoryCache.set(strKey, {
-          data: value,
-          expireAt: Date.now() + expireInMs,
-        });
-        await namespace.put(strKey, JSON.stringify(value), {
-          expirationTtl: Math.max(1, Math.ceil(expireInMs / 1000)),
-        });
+        return await memcache(fullKey).get(() =>
+          namespace.get(strKey, "json") as Promise<TEntryVal | null>
+        );
       },
       async update(
         updater: (current: TEntryVal | null) => TEntryVal | null,
+        opts: KvOptions = {},
       ): Promise<KvUpdateResult> {
         return await withKeyLock(strKey, async () => {
-          const cached = memoryCache.get(strKey);
-          let current: TEntryVal | null;
-          if (cached && Date.now() < cached.expireAt) {
-            current = cached.data as TEntryVal;
-          } else {
-            memoryCache.delete(strKey);
-            current = await namespace.get(strKey, "json") as TEntryVal | null;
-          }
+          const current = await namespace.get(strKey, "json") as
+            | TEntryVal
+            | null;
           const updated = updater(current);
+          const cache = memcache(fullKey);
           if (updated === null) {
-            memoryCache.delete(strKey);
+            cache.delete();
             await namespace.delete(strKey);
             return { ok: true };
           }
-          const expireInMs = options?.expireIn ?? expireIn;
-          memoryCache.set(strKey, {
-            data: updated,
-            expireAt: Date.now() + expireInMs,
-          });
+          cache.set(updated);
+          const expireInMs = opts.expireIn ?? repoOptions.expireIn ?? expireIn;
           await namespace.put(strKey, JSON.stringify(updated), {
             expirationTtl: Math.max(1, Math.ceil(expireInMs / 1000)),
           });
           return { ok: true };
         });
       },
-      async delete(): Promise<void> {
-        memoryCache.delete(strKey);
-        await namespace.delete(strKey);
-      },
     };
   }
 
-  list(options?: KvOptions) {
-    const entryFn = (key: KvKey, entryOptions?: KvOptions) =>
-      this.entry<T>(key, entryOptions);
-    const namespace = this.namespace;
-    const prefix = this.prefix;
-    const prefixString = `${keyToString(prefix)}/`;
-    return {
-      async *[Symbol.asyncIterator](): AsyncIterableIterator<
-        ReturnType<typeof entryFn>
-      > {
-        let cursor: string | undefined;
-        do {
-          const result = await namespace.list({ prefix: prefixString, cursor });
-          for (const item of result.keys) {
-            const fullKey = stringToKey(item.name);
-            const key = fullKey.slice(prefix.length);
-            yield entryFn(key, options);
-          }
-          cursor = result.list_complete ? undefined : result.cursor;
-        } while (cursor);
-      },
-      async create(value: T, options?: KvOptions): Promise<KvKey | null> {
-        let done = false;
-        let ulid: string | null = null;
-        while (!done) {
-          ulid = monotonicUlid();
-          const newKey = [...prefix, ulid];
-          const entry = entryFn(newKey, options);
-          const result = await entry.update((current) => {
-            if (current !== null) return current;
-            done = true;
-            return value;
-          });
-          if (!result.ok) done = false;
+  async *[Symbol.asyncIterator](): AsyncIterableIterator<
+    KvEntryInterface<TVal, KvKeyPart, KvOptions>
+  > {
+    const serializedPrefix = keyToString(this.prefix);
+    const prefixString = serializedPrefix.length === 0
+      ? ""
+      : `${serializedPrefix}/`;
+
+    let cursor: string | undefined;
+    do {
+      const result = await this.namespace.list({
+        prefix: prefixString,
+        cursor,
+      });
+      for (const item of result.keys) {
+        const fullKey = stringToKey(item.name);
+        const key = fullKey.slice(this.prefix.length)[0];
+        if (key !== undefined) {
+          yield this.entry<TVal>(key);
         }
-        return ulid ? [ulid] : null;
-      },
-      get(key: KvKey) {
-        return entryFn(key, options);
-      },
-    };
+      }
+      cursor = result.list_complete ? undefined : result.cursor;
+    } while (cursor);
   }
 }
 export const test = { stringToKey, keyToString };

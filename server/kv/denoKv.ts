@@ -1,100 +1,61 @@
-import type { KvKey, KvOptions, KvRepo, KvUpdateResult } from "./types.ts";
+import { memcache } from "#/server/kv/memcache.ts";
+import type {
+  KvEntryInterface,
+  KvKey,
+  KvKeyPart,
+  KvOptions,
+  KvRepo,
+  KvUpdateResult,
+} from "./types.ts";
 import { monotonicUlid } from "@std/ulid";
 
 export const kv = await Deno.openKv();
-const expireIn = 40 * 60 * 1000; // 40分
-const memoryCache = new Map<KvKey, { data: unknown; expireAt: number }>();
 
-export class DenoKvRepo<T> implements KvRepo<T> {
-  constructor(public prefix: KvKey = []) {
+export class DenoKvRepo<TVal> implements KvRepo<TVal, KvKeyPart, KvOptions> {
+  constructor(public prefix: KvKey = [], public options: KvOptions = {}) {
   }
-  entry<TEntryVal = T>(key_: KvKey, options?: KvOptions) {
-    const key = [...this.prefix, ...key_];
+  genKey(): string {
+    return monotonicUlid();
+  }
+  entry<TEntryVal = TVal>(
+    key: KvKeyPart,
+  ): KvEntryInterface<TEntryVal, KvKeyPart, KvOptions> {
+    const fullKey = [...this.prefix, key];
     return {
       key,
+      fullKey,
       async get(): Promise<TEntryVal | null> {
-        if (memoryCache.has(key)) {
-          const { data, expireAt } = memoryCache.get(key)!;
-          if (Date.now() < expireAt) {
-            return data as TEntryVal;
-          } else {
-            memoryCache.delete(key);
-          }
-        }
-        const result = await kv.get<TEntryVal>(key);
-        if (result.value !== null) {
-          memoryCache.set(key, {
-            data: result.value,
-            expireAt: Date.now() + (options?.expireIn ?? expireIn),
-          });
-        }
-        return result.value;
-      },
-      async set(value: TEntryVal, options?: KvOptions): Promise<void> {
-        memoryCache.set(key, {
-          data: value,
-          expireAt: Date.now() + (options?.expireIn ?? expireIn),
-        });
-        await kv.set(key, value, options || { expireIn });
+        return await memcache(this.fullKey).get(
+          () => kv.get<TEntryVal>(fullKey).then((x) => x.value),
+        );
       },
       async update(
         updater: (current: TEntryVal | null) => TEntryVal | null,
+        opts: KvOptions = {},
       ): Promise<KvUpdateResult> {
-        const current = await kv.get<TEntryVal>(key);
+        const current = await kv.get<TEntryVal>(fullKey);
         const updated = updater(current.value);
         const atomic = kv.atomic().check(current);
+        const cache = memcache(fullKey);
         if (updated === null) {
-          memoryCache.delete(key);
-          const result = await atomic.delete(key).commit();
+          cache.delete();
+          const result = await atomic.delete(fullKey).commit();
           return { ok: result.ok };
         }
-        memoryCache.set(key, {
-          data: updated,
-          expireAt: Date.now() + (options?.expireIn ?? expireIn),
-        });
-        const result = await atomic.set(key, updated).commit();
+        cache.set(updated);
+        const result = await atomic.set(fullKey, updated, opts).commit();
         return { ok: result.ok };
-      },
-      async delete(): Promise<void> {
-        memoryCache.delete(key);
-        await kv.delete(key);
       },
     };
   }
-  list(options?: KvOptions) {
-    const entryFn = (key: KvKey, entryOptions?: KvOptions) =>
-      this.entry<T>(key, entryOptions);
-    const prefix = this.prefix;
-    return {
-      async *[Symbol.asyncIterator](): AsyncIterableIterator<
-        ReturnType<typeof entryFn>
-      > {
-        const list = kv.list({ prefix: prefix });
-        for await (const entry of list) {
-          const fullKey = entry.key as KvKey;
-          const key = fullKey.slice(prefix.length);
-          yield entryFn(key, options);
-        }
-      },
-      async create(value: T, options?: KvOptions): Promise<KvKey | null> {
-        let done = false;
-        let ulid: string | null = null;
-        while (!done) {
-          ulid = monotonicUlid();
-          const newKey: KvKey = [...prefix, ulid];
-          const entry = entryFn(newKey, options);
-          const result = await entry.update((current) => {
-            if (current !== null) return current;
-            done = true;
-            return value;
-          });
-          if (!result.ok) done = false;
-        }
-        return ulid ? [ulid] : null;
-      },
-      get(key: KvKey) {
-        return entryFn(key, options);
-      },
-    };
+  async *[Symbol.asyncIterator](): AsyncIterableIterator<
+    KvEntryInterface<TVal, KvKeyPart, KvOptions>
+  > {
+    const list = kv.list({ prefix: this.prefix });
+    for await (const entry of list) {
+      const fullKey = entry.key as KvKey;
+      const key = fullKey.slice(this.prefix.length)[0];
+      yield this.entry<TVal>(key);
+    }
   }
 }

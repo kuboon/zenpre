@@ -1,5 +1,12 @@
 // deno-lint-ignore-file require-await
-import type { KvKey, KvOptions, KvRepo, KvUpdateResult } from "./types.ts";
+import type {
+  KvEntryInterface,
+  KvKey,
+  KvKeyPart,
+  KvOptions,
+  KvRepo,
+  KvUpdateResult,
+} from "./types.ts";
 import { monotonicUlid } from "@std/ulid";
 
 type Entry<T> = { value: T; expireAt: number | null };
@@ -8,27 +15,35 @@ function keyToString(key: KvKey): string {
   return JSON.stringify(key);
 }
 
-export class MemoryKvRepo<T> implements KvRepo<T> {
+export class MemoryKvRepo<T> implements KvRepo<T, KvKeyPart, KvOptions> {
   private store = new Map<string, Entry<T>>();
 
-  constructor(public prefix: KvKey = []) {}
+  constructor(public prefix: KvKey = [], public options: KvOptions = {}) {}
 
-  private fullKey(key: KvKey): KvKey {
-    return [...this.prefix, ...key];
+  genKey(): string {
+    return monotonicUlid();
+  }
+
+  private fullKey(key: KvKeyPart): KvKey {
+    return [...this.prefix, key];
   }
 
   private isExpired(entry: Entry<T>): boolean {
     return entry.expireAt !== null && Date.now() >= entry.expireAt;
   }
 
-  entry<TEntryVal = T>(key_: KvKey, options?: KvOptions) {
-    const key = this.fullKey(key_);
-    const strKey = keyToString(key);
+  entry<TEntryVal = T>(
+    key: KvKeyPart,
+  ): KvEntryInterface<TEntryVal, KvKeyPart, KvOptions> {
+    const fullKey = this.fullKey(key);
+    const strKey = keyToString(fullKey);
     const store = this.store;
     const isExpired = this.isExpired.bind(this);
+    const repoOptions = this.options;
 
-    return {
+    const entry = {
       key,
+      fullKey,
       async get(): Promise<TEntryVal | null> {
         const entry = store.get(strKey);
         if (!entry || isExpired(entry)) {
@@ -37,15 +52,9 @@ export class MemoryKvRepo<T> implements KvRepo<T> {
         }
         return entry.value as unknown as TEntryVal;
       },
-      async set(value: TEntryVal, setOptions?: KvOptions): Promise<void> {
-        const expireIn = setOptions?.expireIn ?? options?.expireIn;
-        store.set(strKey, {
-          value: value as unknown as T,
-          expireAt: expireIn != null ? Date.now() + expireIn : null,
-        });
-      },
       async update(
         updater: (current: TEntryVal | null) => TEntryVal | null,
+        opts: KvOptions = {},
       ): Promise<KvUpdateResult> {
         const entry = store.get(strKey);
         const current = entry && !isExpired(entry)
@@ -55,7 +64,7 @@ export class MemoryKvRepo<T> implements KvRepo<T> {
         if (updated === null) {
           store.delete(strKey);
         } else {
-          const expireIn = options?.expireIn;
+          const expireIn = opts.expireIn ?? repoOptions.expireIn;
           store.set(strKey, {
             value: updated as unknown as T,
             expireAt: expireIn != null ? Date.now() + expireIn : null,
@@ -63,53 +72,16 @@ export class MemoryKvRepo<T> implements KvRepo<T> {
         }
         return { ok: true };
       },
-      async delete(): Promise<void> {
-        store.delete(strKey);
-      },
     };
+    return entry;
   }
 
-  list(options?: KvOptions) {
-    const entryFn = (key: KvKey, entryOptions?: KvOptions) =>
-      this.entry<T>(key, entryOptions);
-    const prefix = this.prefix;
-    const prefixStr = keyToString(prefix);
-    const store = this.store;
-    const isExpired = this.isExpired.bind(this);
-
-    return {
-      async *[Symbol.asyncIterator](): AsyncIterableIterator<
-        ReturnType<typeof entryFn>
-      > {
-        for (const [strKey, entry] of store) {
-          if (isExpired(entry)) {
-            store.delete(strKey);
-            continue;
-          }
-          const fullKey = JSON.parse(strKey) as KvKey;
-          if (
-            fullKey.length > prefix.length &&
-            keyToString(fullKey.slice(0, prefix.length)) === prefixStr
-          ) {
-            const key = fullKey.slice(prefix.length);
-            yield entryFn(key, options);
-          }
-        }
-      },
-      async create(value: T, createOptions?: KvOptions): Promise<KvKey | null> {
-        const ulid = monotonicUlid();
-        const key = [...prefix, ulid];
-        const strKey = keyToString(key);
-        const expireIn = createOptions?.expireIn ?? options?.expireIn;
-        store.set(strKey, {
-          value,
-          expireAt: expireIn != null ? Date.now() + expireIn : null,
-        });
-        return [ulid];
-      },
-      get(key: KvKey) {
-        return entryFn(key, options);
-      },
-    };
+  async *[Symbol.asyncIterator](): AsyncIterableIterator<
+    KvEntryInterface<T, KvKeyPart, KvOptions>
+  > {
+    for await (const key of this.store.keys()) {
+      const kvEntry = this.entry(JSON.parse(key).pop()!);
+      yield kvEntry;
+    }
   }
 }

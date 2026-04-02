@@ -11,9 +11,9 @@ export async function sign(data: string): Promise<string> {
 }
 export async function verify(
   data: string,
-  signature: string,
+  sign: string,
 ): Promise<boolean> {
   const dataBuf = new TextEncoder().encode(data);
-  const sigBuf = decodeBase64Url(signature);
+  const sigBuf = decodeBase64Url(sign);
   return await verifyBuffer(publicKey, sigBuf, dataBuf);
 }
