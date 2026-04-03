@@ -1,4 +1,4 @@
-import markdownToHtml from "./markdown.ts";
+import { markdownToHtml } from "./markdown.ts";
 import { assertEquals } from "@std/assert";
 
 const normalizeHtml = (html: string) =>

@@ -27,11 +27,18 @@
     "jsxImportSource": "lume"
   },
   "imports": {
+    "beautiful-mermaid": "npm:beautiful-mermaid@^1.1.3",
     "daisyui": "npm:daisyui@^5.5.19",
     "lume/": "https://cdn.jsdelivr.net/gh/lumeland/lume@3.2.2/",
     "lume/cms/": "https://cdn.jsdelivr.net/gh/lumeland/cms@0.14.16/",
     "lume/jsx-runtime": "https://cdn.jsdelivr.net/gh/oscarotero/ssx@0.1.14/jsx-runtime.ts",
-    "tailwindcss": "npm:tailwindcss@^4.2.2"
+    "tailwindcss": "npm:tailwindcss@^4.2.2",
+    "unified": "https://esm.sh/unified@11",
+    "unist-util-visit": "npm:unist-util-visit@^5.1.0",
+    "rehype-stringify": "npm:rehype-stringify@^10.0.1",
+    "remark-parse": "npm:remark-parse@^11.0.0",
+    "remark-rehype": "npm:remark-rehype@^11.1.2",
+    "@shikijs/rehype": "npm:@shikijs/rehype@^4.0.2"
   },
   "fmt": {
     "exclude": ["**/*.vto"]
