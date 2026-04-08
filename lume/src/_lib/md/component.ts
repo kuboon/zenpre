@@ -28,7 +28,17 @@ class MarkdownRenderer extends HTMLDivElement {
     const params = new URLSearchParams(location.search);
     const eventId = params.get("event");
     if (eventId) {
-      this.connectToRelay(eventId);
+      const es = new EventSource(`/api/relay/${eventId}`);
+      this.eventSource = es;
+      es.addEventListener("message", (event: MessageEvent) => {
+        try {
+          const parsed = JSON.parse(event.data);
+          if (!ActionSchema.allows(parsed)) return;
+          this.dispatchEvent(new CustomEvent("action", { detail: parsed }));
+        } catch {
+          // ignore parse errors
+        }
+      });
     }
   }
 
@@ -36,20 +46,6 @@ class MarkdownRenderer extends HTMLDivElement {
     this.removeEventListener("action", this.boundOnAction);
     this.eventSource?.close();
     this.eventSource = null;
-  }
-
-  private connectToRelay(eventId: string) {
-    const es = new EventSource(`/api/relay/${eventId}`);
-    this.eventSource = es;
-    es.addEventListener("message", (event: MessageEvent) => {
-      try {
-        const parsed = JSON.parse(event.data);
-        if (!ActionSchema.allows(parsed)) return;
-        this.dispatchEvent(new CustomEvent("action", { detail: parsed }));
-      } catch {
-        // ignore parse errors
-      }
-    });
   }
 
   private handleAction(action: Action) {
