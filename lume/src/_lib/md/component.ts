@@ -3,10 +3,16 @@ import { markdownToHtml, slideshowToHtml } from "./markdown.ts";
 type Action = { type: string; [key: string]: unknown };
 
 class MarkdownRenderer extends HTMLDivElement {
-  private eventSource: EventSource | null = null;
+  private boundOnAction: (e: Event) => void;
 
-  static get observedAttributes() {
-    return ["on-air-id"];
+  constructor() {
+    super();
+    this.boundOnAction = (e: Event) => {
+      if (!(e instanceof CustomEvent)) return;
+      const detail = e.detail;
+      if (!detail || typeof detail !== "object" || typeof detail.type !== "string") return;
+      this.handleAction(detail as Action);
+    };
   }
 
   async connectedCallback() {
@@ -22,41 +28,11 @@ class MarkdownRenderer extends HTMLDivElement {
       rendered.innerHTML = await markdownToHtml(markdown);
     }
 
-    const onAirId = this.getAttribute("on-air-id");
-    if (onAirId && !this.eventSource) {
-      this.connectRelay(onAirId);
-    }
+    this.addEventListener("action", this.boundOnAction);
   }
 
   disconnectedCallback() {
-    this.eventSource?.close();
-    this.eventSource = null;
-  }
-
-  attributeChangedCallback(
-    name: string,
-    _old: string | null,
-    newValue: string | null,
-  ) {
-    if (name === "on-air-id") {
-      this.eventSource?.close();
-      this.eventSource = null;
-      if (newValue) {
-        this.connectRelay(newValue);
-      }
-    }
-  }
-
-  private connectRelay(onAirId: string) {
-    this.eventSource = new EventSource(`/api/relay/${onAirId}`);
-    this.eventSource.onmessage = (event) => {
-      try {
-        const action: Action = JSON.parse(event.data);
-        this.handleAction(action);
-      } catch {
-        // ignore malformed actions
-      }
-    };
+    this.removeEventListener("action", this.boundOnAction);
   }
 
   private handleAction(action: Action) {
