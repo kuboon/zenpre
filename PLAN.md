@@ -15,32 +15,32 @@ deno deno deploy deno kv
     - [x] 各ページ内は heading ごとに idx を採番
     - [x] https://github.com/lukilabs/beautiful-mermaid に対応
     - [x] shiki code hilghter 対応
-    - [x] in slide actions 後述
+    - [ ] in slide actions 後述
   - [x] css
     - [x] daisyui theme対応
 - [x] event
-  - [x] start_at
+  - [x] start_at (begin_at)
   - [x] end_at
-  - [x] presenter key
-  - [x] moderator key (optional)
+  - [ ] presenter key
+  - [ ] moderator key (optional)
   - [x] slide_id
-  - [x] timeline
-    - [x] 開始何秒後にどのアクションを発生させるかを列挙したarray
+  - [ ] timeline
+    - [ ] 開始何秒後にどのアクションを発生させるかを列挙したarray
 
 ## Actions
 
 - [x] focus(page, idx)
 - [x] reaction(emoji)
   - [x] 画面上にランダムにフワッと出て消える
-  - [x] webaudio で音も出す
+  - [ ] webaudio で音も出す
 - [ ] join
-- [x] post(string)
-  - [x] 50文字以内
-  - [x] PostViewer の list に溜まる
-  - [x] audience からの post は level 0, id なしで送られる
-  - [x] presenter は level を上げて id を付与して再配信する
-- [x] vote(id)
-  - [x] idのついた post に投票出来る
+- [ ] post(string)
+  - [ ] 50文字以内
+  - [ ] PostViewer の list に溜まる
+  - [ ] audience からの post は level 0, id なしで送られる
+  - [ ] presenter は level を上げて id を付与して再配信する
+- [ ] vote(id)
+  - [ ] idのついた post に投票出来る
 
 # components
 
@@ -50,11 +50,11 @@ markdown で初期化 json で action を受け取って実行
 
 - focus と reaction のみ担当
 
-### [x] PostViewer
+### [ ] PostViewer
 
 post と vote のみ対応
 
-### [x] Controller
+### [ ] Controller
 
 action をリアルタイムに生成するUI
 
@@ -64,19 +64,19 @@ action をリアルタイムに生成するUI
 https://github.com/kuboon/deno-pubsub/blob/main/routes/api/topics/%5BtopicId%5D.ts
 
 - 権限
-  - [x] presenter
-    - [x] event_key で認証
-    - [x] focus を pub 出来る
-    - [x] post level 0 を受け取れる
-    - [x] post level を上げて配信出来る
-      - [x] この時、 vote のためのidも発行する
-  - [x] audience
-    - [x] 接続時に audience_id をリレー内で付与し、pub に付与する
-    - [x] post は level 0 のみ pub 可能
-    - [x] level 0 の post は配信されない
+  - [ ] presenter
+    - [ ] event_key で認証
+    - [ ] focus を pub 出来る
+    - [ ] post level 0 を受け取れる
+    - [ ] post level を上げて配信出来る
+      - [ ] この時、 vote のためのidも発行する
+  - [ ] audience
+    - [ ] 接続時に audience_id をリレー内で付与し、pub に付与する
+    - [ ] post は level 0 のみ pub 可能
+    - [ ] level 0 の post は配信されない
     - [ ] 秒あたりの pub を制限し、spamming を抑止する
 
-### [x] Moderator
+### [ ] Moderator
 
 audience からの post は moderator だけがまず受け取り、 Moderator
 を通してから全員へブロードキャストされる ask.level を操作する PostViewer
@@ -86,18 +86,18 @@ audience からの post は moderator だけがまず受け取り、 Moderator
 - [ ] BlacklistModerator
   - シンプルな自動モデレーター
 - [ ] ModeratorMcp
-- [x] PostViewer ModeratorUi
+- [ ] PostViewer ModeratorUi
   - swipe、キーボード操作で level を操作出来る
 
-### [x] Recorder & Player
+### [ ] Recorder & Player
 
-- [x] Recorder
-  - [x] presenter の端末上で動作する
-  - [x] Action を経過時間とともに記録する
-- [x] Player
-  - [x] 記録済みの timeline を再生して SlideViewer & PostViewer を自動操作
+- [ ] Recorder
+  - [ ] presenter の端末上で動作する
+  - [ ] Action を経過時間とともに記録する
+- [ ] Player
+  - [ ] 記録済みの timeline を再生して SlideViewer & PostViewer を自動操作
 
-## [x] remote mcp support
+## [ ] remote mcp support
 
 - [x] upload_slide(markdown, css)
   - [x] slide_id, slide_key が返される

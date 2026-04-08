@@ -1,6 +1,7 @@
 import { onAirResource, slideResource } from "./resources.ts";
 import { createRouterForResource } from "./createRouter.ts";
 import { app as verifyApp } from "./sign/hono.ts";
+import { relayApp } from "./relay.ts";
 
 import { Hono } from "@hono/hono";
 
@@ -10,6 +11,7 @@ const onAirApp = createRouterForResource(onAirResource);
 const app = new Hono()
   .route("/api/slide", slideApp)
   .route("/api/on-air", onAirApp)
+  .route("/api/relay", relayApp)
   .route("/api", verifyApp);
 
 export default app;

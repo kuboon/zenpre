@@ -1,4 +1,4 @@
-import { markdownToHtml } from "./markdown.ts";
+import { markdownToHtml, slideshowToHtml } from "./markdown.ts";
 import { assertEquals } from "@std/assert";
 
 const normalizeHtml = (html: string) =>
@@ -33,4 +33,34 @@ Deno.test("shiki support", async () => {
   assertEquals(actualHtml.includes('class="shiki'), true);
   assertEquals(actualHtml.includes("const"), true);
   assertEquals(actualHtml.includes("answer"), true);
+});
+
+Deno.test("slideshowToHtml splits pages by ---", async () => {
+  const markdown = "# Slide 1\nContent\n---\n# Slide 2\nMore";
+  const html = await slideshowToHtml(markdown);
+
+  assertEquals(html.includes('data-page="1"'), true);
+  assertEquals(html.includes('data-page="2"'), true);
+  assertEquals(html.includes("Slide 1"), true);
+  assertEquals(html.includes("Slide 2"), true);
+});
+
+Deno.test("slideshowToHtml adds data-anchor to headings", async () => {
+  const markdown = "# First\n## Second\n---\n# Third";
+  const html = await slideshowToHtml(markdown);
+
+  // Page 1 headings should get data-anchor="0" and data-anchor="1"
+  assertEquals(html.includes('data-anchor="0"'), true);
+  assertEquals(html.includes('data-anchor="1"'), true);
+  // Page 2 heading resets anchor index to 0
+  const page2 = html.split('data-page="2"')[1];
+  assertEquals(page2?.includes('data-anchor="0"'), true);
+});
+
+Deno.test("slideshowToHtml wraps single page without separator", async () => {
+  const markdown = "# Hello";
+  const html = await slideshowToHtml(markdown);
+
+  assertEquals(html.includes('data-page="1"'), true);
+  assertEquals(html.includes('data-page="2"'), false);
 });
