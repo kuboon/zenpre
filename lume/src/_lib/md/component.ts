@@ -1,20 +1,30 @@
-import { markdownToHtml } from "./markdown.ts";
+import { slideshowToHtml } from "./markdown.ts";
 
-type FocusAction = { type: "focus"; page: number; anchor: number };
-type ReactionAction = { type: "reaction"; emoji: string };
-type Action = FocusAction | ReactionAction | { type: string };
+type Action = { type: string; [key: string]: unknown };
 
 class MarkdownRenderer extends HTMLDivElement {
-  private pages: string[] = [];
-  private currentPage = 0;
+  private boundOnAction: (e: Event) => void;
   private eventSource: EventSource | null = null;
+
+  constructor() {
+    super();
+    this.boundOnAction = (e: Event) => {
+      if (!(e instanceof CustomEvent)) return;
+      const detail = e.detail;
+      if (
+        !detail || typeof detail !== "object" || typeof detail.type !== "string"
+      ) return;
+      this.handleAction(detail as Action);
+    };
+  }
 
   async connectedCallback() {
     const markdown = this.querySelector("template")?.innerHTML ?? "";
-    const markdownPages = markdown.split(/\n---\n/).map((s) => s.trim())
-      .filter(Boolean);
-    this.pages = markdownPages.length > 0 ? markdownPages : [markdown];
-    await this.renderPage(0);
+    const rendered = this.querySelector("#rendered");
+    if (!rendered) return;
+
+    rendered.innerHTML = await slideshowToHtml(markdown);
+    this.addEventListener("action", this.boundOnAction);
 
     const params = new URLSearchParams(location.search);
     const eventId = params.get("event");
@@ -24,30 +34,9 @@ class MarkdownRenderer extends HTMLDivElement {
   }
 
   disconnectedCallback() {
+    this.removeEventListener("action", this.boundOnAction);
     this.eventSource?.close();
     this.eventSource = null;
-  }
-
-  private async renderPage(pageIndex: number) {
-    const idx = Math.max(0, Math.min(pageIndex, this.pages.length - 1));
-    const page = this.pages[idx] ?? "";
-    const rendered = this.querySelector("#rendered");
-    if (rendered) {
-      rendered.innerHTML = await markdownToHtml(page);
-    }
-    this.currentPage = idx;
-  }
-
-  private focusPage(pageIndex: number, anchor: number) {
-    this.renderPage(pageIndex).then(() => {
-      const rendered = this.querySelector("#rendered");
-      if (!rendered) return;
-      const headings = rendered.querySelectorAll("h1,h2,h3,h4,h5,h6");
-      const heading = headings[anchor];
-      if (heading) {
-        heading.scrollIntoView({ behavior: "smooth" });
-      }
-    });
   }
 
   private connectToRelay(eventId: string) {
@@ -56,7 +45,7 @@ class MarkdownRenderer extends HTMLDivElement {
     es.addEventListener("message", (event: MessageEvent) => {
       try {
         const action = JSON.parse(event.data) as Action;
-        this.handleAction(action);
+        this.dispatchEvent(new CustomEvent("action", { detail: action }));
       } catch {
         // ignore parse errors
       }
@@ -65,28 +54,48 @@ class MarkdownRenderer extends HTMLDivElement {
 
   private handleAction(action: Action) {
     if (action.type === "focus") {
-      const { page, anchor } = action as FocusAction;
-      this.focusPage(page, anchor);
+      const page = action.page;
+      const anchor = action.anchor;
+      if (typeof page !== "number" || typeof anchor !== "number") return;
+      this.handleFocus(page, anchor);
     } else if (action.type === "reaction") {
-      this.showReaction((action as ReactionAction).emoji);
+      const emoji = action.emoji;
+      if (typeof emoji !== "string" || !emoji) return;
+      this.handleReaction(emoji);
     }
   }
 
-  private showReaction(emoji: string) {
-    const el = document.createElement("span");
+  private handleFocus(page: number, anchor: number) {
+    const pageEl = this.querySelector(`[data-page="${page}"]`);
+    if (!pageEl) return;
+    const headings = pageEl.querySelectorAll("[data-anchor]");
+    const target = anchor < headings.length ? headings[anchor] : pageEl;
+    target.scrollIntoView({ behavior: "smooth" });
+  }
+
+  private handleReaction(emoji: string) {
+    const el = document.createElement("div");
     el.textContent = emoji;
-    const x = Math.floor(Math.random() * 80 + 10);
-    const y = Math.floor(Math.random() * 80 + 10);
-    el.style.cssText =
-      `position:fixed;font-size:3rem;left:${x}%;top:${y}%;pointer-events:none;z-index:9999;`;
+    // Position randomly between 10% and 90% from the left edge
+    const MIN_LEFT = 10;
+    const LEFT_RANGE = 80;
+    const left = Math.random() * LEFT_RANGE + MIN_LEFT;
+    el.style.cssText = [
+      "position:fixed",
+      `left:${left}%`,
+      "bottom:10%",
+      "font-size:2rem",
+      "pointer-events:none",
+      "z-index:9999",
+      "transition:bottom 3s ease-out,opacity 3s ease-out",
+      "opacity:1",
+    ].join(";");
     document.body.appendChild(el);
-    el.animate(
-      [
-        { opacity: 1, transform: "translateY(0)" },
-        { opacity: 0, transform: "translateY(-60px)" },
-      ],
-      { duration: 2000, easing: "ease-out" },
-    ).onfinish = () => el.remove();
+    requestAnimationFrame(() => {
+      el.style.bottom = "80%";
+      el.style.opacity = "0";
+    });
+    setTimeout(() => el.remove(), 3000);
   }
 }
 

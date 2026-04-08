@@ -1,50 +1,29 @@
 import { Hono } from "@hono/hono";
-
-const subscribers = new Map<
-  string,
-  Set<ReadableStreamDefaultController<Uint8Array>>
->();
-const encoder = new TextEncoder();
-
-function getSubscribers(
-  id: string,
-): Set<ReadableStreamDefaultController<Uint8Array>> {
-  if (!subscribers.has(id)) {
-    subscribers.set(id, new Set());
-  }
-  return subscribers.get(id)!;
-}
-
-function broadcast(id: string, data: string): void {
-  const subs = subscribers.get(id);
-  if (!subs) return;
-  const msg = encoder.encode(`data: ${data}\n\n`);
-  for (const controller of subs) {
-    try {
-      controller.enqueue(msg);
-    } catch {
-      subs.delete(controller);
-    }
-  }
-}
+import { ActionSchema } from "#/schemas.ts";
+import { sValidator } from "@hono/standard-validator";
 
 export const relayApp = new Hono()
-  .get("/:id", (c) => {
-    const { id } = c.req.param();
-    const subs = getSubscribers(id);
+  .get("/:onAirId", (c) => {
+    const { onAirId } = c.req.param();
+    const channel = new BroadcastChannel(`relay:${onAirId}`);
 
-    const body = new ReadableStream<Uint8Array>({
+    const body = new ReadableStream({
       start(controller) {
-        subs.add(controller);
-        controller.enqueue(encoder.encode(": connected\n\n"));
-        c.req.raw.signal.addEventListener("abort", () => {
-          subs.delete(controller);
+        channel.onmessage = (event: MessageEvent) => {
           try {
-            controller.close();
+            const data = `data: ${JSON.stringify(event.data)}\n\n`;
+            controller.enqueue(new TextEncoder().encode(data));
           } catch {
-            // already closed
+            // Stream was closed; cancel() will handle channel cleanup
           }
-        });
+        };
+        channel.onmessageerror = () => {
+          channel.close();
+          controller.close();
+        };
+      },
+      cancel() {
+        channel.close();
       },
     });
 
@@ -57,9 +36,11 @@ export const relayApp = new Hono()
       },
     });
   })
-  .post("/:id", async (c) => {
-    const { id } = c.req.param();
-    const data = await c.req.text();
-    broadcast(id, data);
-    return c.json({ ok: true });
+  .post("/:onAirId", sValidator("json", ActionSchema), (c) => {
+    const { onAirId } = c.req.param();
+    const action = c.req.valid("json");
+    const channel = new BroadcastChannel(`relay:${onAirId}`);
+    channel.postMessage(action);
+    channel.close();
+    return c.body(null, 204);
   });

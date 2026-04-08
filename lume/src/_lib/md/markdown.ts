@@ -109,3 +109,34 @@ export async function markdownToHtml(
 
   return String(file);
 }
+
+/**
+ * Add sequential data-anchor attributes to all heading elements in an HTML string.
+ * Anchors are indexed from 0 within each page.
+ */
+function addAnchorIndices(html: string): string {
+  let index = 0;
+  return html.replace(/<(h[1-6])(\s[^>]*)?>/g, (_match, tag, attrs) => {
+    const attrStr = attrs ? `${(attrs as string).trimEnd()} ` : " ";
+    return `<${tag}${attrStr}data-anchor="${index++}">`;
+  });
+}
+
+/**
+ * Convert a slideshow markdown string (pages separated by `\n---\n`) to HTML.
+ * Each page is wrapped in a `<section data-page="N">` element (1-indexed).
+ * Headings within each page receive a `data-anchor="N"` attribute (0-indexed).
+ */
+export async function slideshowToHtml(markdown: string): Promise<string> {
+  // Split on `---` that appears as its own line, with or without a preceding newline.
+  // Filter out empty segments (e.g., when markdown starts with `---`).
+  const pages = markdown.split(/\n?---\n/).filter((p) => p.trim().length > 0);
+  const htmlPages = await Promise.all(
+    pages.map(async (page, index) => {
+      const html = await markdownToHtml(page);
+      const numbered = addAnchorIndices(html);
+      return `<section data-page="${index + 1}">${numbered}</section>`;
+    }),
+  );
+  return htmlPages.join("");
+}
