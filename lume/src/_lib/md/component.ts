@@ -1,6 +1,7 @@
+import { ActionSchema } from "#/schemas.ts";
 import { slideshowToHtml } from "./markdown.ts";
 
-type Action = { type: string; [key: string]: unknown };
+type Action = typeof ActionSchema.t;
 
 class MarkdownRenderer extends HTMLDivElement {
   private boundOnAction: (e: Event) => void;
@@ -11,10 +12,8 @@ class MarkdownRenderer extends HTMLDivElement {
     this.boundOnAction = (e: Event) => {
       if (!(e instanceof CustomEvent)) return;
       const detail = e.detail;
-      if (
-        !detail || typeof detail !== "object" || typeof detail.type !== "string"
-      ) return;
-      this.handleAction(detail as Action);
+      if (!ActionSchema.allows(detail)) return;
+      this.handleAction(detail);
     };
   }
 
@@ -44,8 +43,9 @@ class MarkdownRenderer extends HTMLDivElement {
     this.eventSource = es;
     es.addEventListener("message", (event: MessageEvent) => {
       try {
-        const action = JSON.parse(event.data) as Action;
-        this.dispatchEvent(new CustomEvent("action", { detail: action }));
+        const parsed = JSON.parse(event.data);
+        if (!ActionSchema.allows(parsed)) return;
+        this.dispatchEvent(new CustomEvent("action", { detail: parsed }));
       } catch {
         // ignore parse errors
       }
@@ -54,14 +54,9 @@ class MarkdownRenderer extends HTMLDivElement {
 
   private handleAction(action: Action) {
     if (action.type === "focus") {
-      const page = action.page;
-      const anchor = action.anchor;
-      if (typeof page !== "number" || typeof anchor !== "number") return;
-      this.handleFocus(page, anchor);
+      this.handleFocus(action.page, action.anchor);
     } else if (action.type === "reaction") {
-      const emoji = action.emoji;
-      if (typeof emoji !== "string" || !emoji) return;
-      this.handleReaction(emoji);
+      this.handleReaction(action.emoji);
     }
   }
 
