@@ -35,22 +35,3 @@ jobs:
           key: ${{ runner.os }}-deno
       - run: deno task check
 
-  deploy:
-    needs: check
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: read
-      id-token: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Setup Deno environment
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: v2.x
-      - name: Deploy to Deno Deploy
-        uses: denoland/deployctl@v1
-        with:
-          project: ${{ vars.DENO_DEPLOY_PROJECT }}
-          entrypoint: server/app.ts

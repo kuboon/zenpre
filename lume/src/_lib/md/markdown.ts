@@ -19,7 +19,7 @@ interface HastElement extends Node {
   properties?: {
     className?: string | string[];
   };
-};
+}
 
 function getCodeInfo(
   node: HastElement,
