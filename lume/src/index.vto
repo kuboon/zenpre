@@ -4,13 +4,28 @@ subtitle: AI時代のプレゼンツール
 ---
 
 <script type="module" src="./component.js"></script>
+<script type="module" src="./player.js"></script>
 
-<div class="mockup-phone h-[90dvh] w-[50dvh]">
-  <div class="mockup-phone-camera"></div>
-  <div class="mockup-phone-display grid bg-white">
-    <div is="markdown-renderer" class="w-full h-full p-4 overflow-y-auto">
-      <template id="markdown">{{ index }}</template>
-      <div id="rendered" class="prose pt-8"></div>
+<div class="flex flex-col items-center gap-4">
+  <div class="mockup-phone h-[90dvh] w-[50dvh]">
+    <div class="mockup-phone-camera"></div>
+    <div class="mockup-phone-display grid bg-white">
+      <div is="markdown-renderer" class="w-full h-full p-4 overflow-y-auto">
+        <template id="markdown">{{ index }}</template>
+        <div id="rendered" class="prose pt-8"></div>
+      </div>
     </div>
   </div>
+
+  <slide-player class="card bg-base-200 shadow p-2">
+    <script type="application/json">
+      [
+        {"ms":    0, "action": {"type": "focus",    "page": 1, "anchor": 0}},
+        {"ms": 2000, "action": {"type": "reaction", "emoji": "🎉"}},
+        {"ms": 4000, "action": {"type": "focus",    "page": 2, "anchor": 0}},
+        {"ms": 6000, "action": {"type": "reaction", "emoji": "👍"}},
+        {"ms": 8000, "action": {"type": "focus",    "page": 1, "anchor": 0}}
+      ]
+    </script>
+  </slide-player>
 </div>

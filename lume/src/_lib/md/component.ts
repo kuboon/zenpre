@@ -5,7 +5,7 @@ type Action = typeof ActionSchema.t;
 
 class MarkdownRenderer extends HTMLDivElement {
   private boundOnAction: (e: Event) => void;
-  private eventSource: EventSource | null = null;
+  private reactionLane = 0;
 
   constructor() {
     super();
@@ -24,28 +24,10 @@ class MarkdownRenderer extends HTMLDivElement {
 
     rendered.innerHTML = await slideshowToHtml(markdown);
     this.addEventListener("action", this.boundOnAction);
-
-    const params = new URLSearchParams(location.search);
-    const eventId = params.get("event");
-    if (eventId) {
-      const es = new EventSource(`/api/relay/${eventId}`);
-      this.eventSource = es;
-      es.addEventListener("message", (event: MessageEvent) => {
-        try {
-          const parsed = JSON.parse(event.data);
-          if (!ActionSchema.allows(parsed)) return;
-          this.dispatchEvent(new CustomEvent("action", { detail: parsed }));
-        } catch {
-          // ignore parse errors
-        }
-      });
-    }
   }
 
   disconnectedCallback() {
     this.removeEventListener("action", this.boundOnAction);
-    this.eventSource?.close();
-    this.eventSource = null;
   }
 
   private handleAction(action: Action) {
@@ -65,16 +47,20 @@ class MarkdownRenderer extends HTMLDivElement {
   }
 
   private handleReaction(emoji: string) {
+    // Cycle lanes so multiple near-simultaneous reactions do not fully overlap.
+    const lane = this.reactionLane++ % 4;
     const el = document.createElement("div");
     el.textContent = emoji;
     // Position randomly between 10% and 90% from the left edge
     const MIN_LEFT = 10;
     const LEFT_RANGE = 80;
     const left = Math.random() * LEFT_RANGE + MIN_LEFT;
+    const startBottom = 10 + lane * 6;
+    const endBottom = 80 - lane * 3;
     el.style.cssText = [
       "position:fixed",
       `left:${left}%`,
-      "bottom:10%",
+      `bottom:${startBottom}%`,
       "font-size:2rem",
       "pointer-events:none",
       "z-index:9999",
@@ -82,9 +68,12 @@ class MarkdownRenderer extends HTMLDivElement {
       "opacity:1",
     ].join(";");
     document.body.appendChild(el);
+    // Defer by two frames so the initial style is committed before transition.
     requestAnimationFrame(() => {
-      el.style.bottom = "80%";
-      el.style.opacity = "0";
+      requestAnimationFrame(() => {
+        el.style.bottom = `${endBottom}%`;
+        el.style.opacity = "0";
+      });
     });
     setTimeout(() => el.remove(), 3000);
   }

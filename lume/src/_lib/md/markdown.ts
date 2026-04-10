@@ -102,7 +102,7 @@ export async function markdownToHtml(
       };
     })
     // deno-lint-ignore no-explicit-any
-    .use(rehypeShiki as any)
+      .use(rehypeShiki as any, { theme: THEME_NAME })
     // deno-lint-ignore no-explicit-any
     .use(rehypeStringify as any, { allowDangerousHtml: true })
     .process(markdown);

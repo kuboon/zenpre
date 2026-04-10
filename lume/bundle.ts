@@ -15,7 +15,7 @@ export interface Options {
     /** Whether to minify the output */
     minify?: boolean;
     /** Whether to include source maps */
-    sourcemap?: boolean;
+    sourcemap?: Deno.bundle.SourceMapType | undefined;
   };
 }
 
@@ -24,7 +24,7 @@ export const defaults: Options = {
   extensions: [".ts", ".js", ".tsx", ".jsx"],
   options: {
     minify: true,
-    sourcemap: false,
+    sourcemap: "linked",
   },
 };
 
@@ -68,11 +68,11 @@ export default function bundle(userOptions?: Options) {
               entrypoints: [`file://${tempFile}`],
               format: "esm" as const,
               minify: options.options?.minify,
+              sourcemap: options.options?.sourcemap,
               outputDir: "/",
               write: false,
             } satisfies Deno.bundle.Options;
 
-            console.log("Bundling with options:", bundleOptions);
             // Bundle the file
             const result = await Deno.bundle(bundleOptions);
 
@@ -82,12 +82,20 @@ export default function bundle(userOptions?: Options) {
               throw new Error(`Bundle failed: ${errors}`);
             }
 
-            const outputFile = result.outputFiles?.[0];
+            const outputFiles = result.outputFiles ?? [];
+            const outputFile = outputFiles.find((file) =>
+              file.path.endsWith(".js") && !file.path.endsWith(".js.map")
+            );
             if (!outputFile) {
               throw new Error("No output file generated");
             }
 
+            const sourceMapFile = outputFiles.find((file) =>
+              file.path === `${outputFile.path}.map`
+            );
+
             const finalCode = outputFile.text();
+            const sourceMap = enableSourceMap ? sourceMapFile?.text() : undefined;
 
             // Save the bundled code
             page.data.url = outputFile.path;
@@ -95,7 +103,7 @@ export default function bundle(userOptions?: Options) {
               site,
               page,
               finalCode,
-              enableSourceMap ? undefined : undefined, // Source maps from Deno.bundle not currently supported
+              sourceMap,
             );
 
             if (item) {

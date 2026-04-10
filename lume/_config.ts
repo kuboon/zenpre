@@ -64,4 +64,5 @@ site.loadData([".md"], async (path) => {
 });
 site.add("style/main.css");
 site.add("_lib/md/component.ts");
+site.add("_lib/md/player.ts");
 export default site;
