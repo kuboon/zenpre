@@ -95,7 +95,9 @@ export default function bundle(userOptions?: Options) {
             );
 
             const finalCode = outputFile.text();
-            const sourceMap = enableSourceMap ? sourceMapFile?.text() : undefined;
+            const sourceMap = enableSourceMap
+              ? sourceMapFile?.text()
+              : undefined;
 
             // Save the bundled code
             page.data.url = outputFile.path;
