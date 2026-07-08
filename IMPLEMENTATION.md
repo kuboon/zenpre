@@ -15,6 +15,9 @@
   同じイベントを見ている全ブラウザにリアルタイム反映される。
 - presenter の操作を timeline として記録し、後から再生できる。
 - LLM から remote MCP でスライド作成・イベント作成ができる。
+- フロントエンド機能の大半を **JSR パッケージ `@kuboon/zenpre`** として公開し、
+  ユーザが自分の GitHub Pages に組み込んで **server
+  のリレー機能だけを利用する**セルフホスト構成を可能にする。
 
 **非ゴール(v1 では作らない)**
 
@@ -24,18 +27,19 @@
 
 ## 2. 技術スタック
 
-| 領域               | 採用                                                               | 備考                                                                                                                                                         |
-| ------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| ランタイム         | Deno(package.json なし、`deno.json` のみ)                          | Deno Deploy にデプロイ                                                                                                                                       |
-| Web フレームワーク | Remix v3 (`@remix-run/fetch-router` + `@remix-run/ui`)             | [deno-remix-reference](https://github.com/kuboon/deno-remix-reference/tree/main/reference) の構成・バージョンピンをそのまま踏襲                              |
-| 永続化             | Deno KV                                                            | slide / event / timeline                                                                                                                                     |
-| リアルタイム       | WebSocket + `BroadcastChannel`                                     | [deno-pubsub](https://github.com/kuboon/deno-pubsub/blob/main/routes/api/topics/%5BtopicId%5D.ts) 方式。BroadcastChannel で Deploy の isolate 間を跨いで配信 |
-| スキーマ検証       | arktype                                                            | Action・API 入出力を単一定義から共有                                                                                                                         |
-| CSS                | Tailwind CSS v4 + daisyUI v5                                       | daisyUI theme をスライドテーマとして使う(PLAN 要件)                                                                                                          |
-| markdown           | micromark or markdown-it(`npm:`)                                   | `---` 分割は独自前処理                                                                                                                                       |
-| コードハイライト   | shiki                                                              | 言語は遅延ロード                                                                                                                                             |
-| 図                 | [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) | mermaid ブロックがあるページのみ遅延ロード                                                                                                                   |
-| MCP                | `npm:@modelcontextprotocol/sdk`                                    | Streamable HTTP を `/mcp` にマウント                                                                                                                         |
+| 領域               | 採用                                                               | 備考                                                                                                                            |
+| ------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| ランタイム         | Deno(package.json なし、`deno.json` のみ)                          | Deno Deploy にデプロイ                                                                                                          |
+| ライブラリ配布     | JSR `@kuboon/zenpre`                                               | フロント機能の大半(render / components / relay client / recorder / player)を提供                                                |
+| Web フレームワーク | Remix v3 (`@remix-run/fetch-router` + `@remix-run/ui`)             | [deno-remix-reference](https://github.com/kuboon/deno-remix-reference/tree/main/reference) の構成・バージョンピンをそのまま踏襲 |
+| 永続化             | Deno KV + [`jsr:@kuboon/kv`](https://jsr.io/@kuboon/kv)            | `KvRepo` 抽象に対して書き、本番 `denoKv.ts` / テスト `memory.ts` を差し替え                                                     |
+| リアルタイム       | WebSocket + `BroadcastChannel`                                     | [deno-pubsub](https://github.com/kuboon/deno-pubsub) の実装を参考にする(isolate 間配信 + 直近値の KV 保存)                      |
+| スキーマ検証       | arktype                                                            | Action・API 入出力を単一定義から共有                                                                                            |
+| CSS                | Tailwind CSS v4 + daisyUI v5                                       | daisyUI theme をスライドテーマとして使う(PLAN 要件)                                                                             |
+| markdown           | **unified**(remark / rehype)                                       | md → html (multipage) を `@kuboon/zenpre/render.ts` として export                                                               |
+| コードハイライト   | shiki(`@shikijs/rehype`)                                           | rehype プラグインとして同一 hast パイプラインに組み込み、AST 処理を最小化                                                       |
+| 図                 | [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) | DOM 不要・同期 `renderMermaidSVG` → render.ts 内で SVG 化                                                                       |
+| MCP                | `npm:@modelcontextprotocol/sdk`                                    | Streamable HTTP を `/mcp` にマウント                                                                                            |
 
 **Deno Deploy 注意点**
 
@@ -49,56 +53,82 @@
 ## 3. リポジトリ構成(Deno workspace)
 
 ```
-deno.json                 # workspace ルート: members, tasks, unstable: [bundle, kv]
+deno.json                   # workspace ルート: members, tasks, unstable: [bundle, kv]
 packages/
-  core/                   # 環境非依存の共有コード(server/client 双方から import)
-    schemas.ts            # arktype: Slide, Event, Action, ワイヤ envelope
-    md/
-      split.ts            # '---' 分割・page/heading 採番(pure, テスト対象)
-      render.ts           # page markdown -> HTML(shiki/mermaid はフック注入)
-    keys.ts               # id/key 生成・ハッシュ化(WebCrypto のみ使用)
-server/
-  main.ts                 # Deno Deploy エントリ
-  router.ts / routes.ts   # Remix v3 fetch-router
-  controllers/            # ページ SSR + API ハンドラ
+  zenpre/                   # JSR: @kuboon/zenpre — フロント機能の大半をここに置く
+    deno.json               # name/version/exports(JSR publish 設定)
+    mod.ts                  # 主要 API の re-export
+    schemas.ts              # arktype: Slide, Event, Action, ワイヤ envelope
+    keys.ts                 # id/key 生成・ハッシュ化(WebCrypto のみ使用)
+    render.ts               # md -> html (multipage)。unified + shiki + beautiful-mermaid
+    relay_client.ts         # WS 再接続・envelope 型付け(server URL は設定可能)
+    components/
+      slide_viewer.ts       # <zen-slide-viewer> Web Component
+      post_viewer.ts        # <zen-post-viewer>
+      reaction_layer.ts     # <zen-reaction-layer>(絵文字アニメ + WebAudio)
+      controller.ts         # presenter UI
+      moderator_ui.ts       # <zen-moderator-ui>
+    recorder.ts player.ts
+    moderators/
+      blacklist.ts          # BlacklistModerator
+server/                     # zenpre.deno.dev 本体(@kuboon/zenpre に workspace 依存)
+  main.ts                   # Deno Deploy エントリ
+  router.ts / routes.ts     # Remix v3 fetch-router
+  controllers/              # ページ SSR + API ハンドラ
   relay/
-    relay.ts              # WebSocket ハブ(このファイルにロジック集約)
-    rate_limit.ts         # token bucket
-  repo/
-    kv.ts                 # KV 接続
-    slides.ts events.ts timelines.ts
-  mcp.ts                  # MCP サーバ定義(/mcp)
-client/
-  components/
-    slide_viewer.ts       # <zen-slide-viewer> Web Component
-    post_viewer.ts        # <zen-post-viewer>
-    reaction_layer.ts     # <zen-reaction-layer>(絵文字アニメ + WebAudio)
-    controller.ts         # presenter UI
-    moderator_ui.ts       # <zen-moderator-ui>
-  relay_client.ts         # WS 再接続・envelope 型付け
-  recorder.ts player.ts
-  pages/                  # 各ページの hydration エントリ
-bundler/                  # Deno.bundle + tailwindcss ビルド -> bundled/
-tests/                    # 結合テスト(relay を実ソケットで叩く)
+    relay.ts                # WebSocket ハブ(このファイルにロジック集約)
+    rate_limit.ts           # token bucket
+  repo/                     # KvRepo(@kuboon/kv)ベースの永続化層
+    repos.ts                # slides / events / timelines の KvRepo 構築
+  mcp.ts                    # MCP サーバ定義(/mcp)
+client/                     # 本体サイトの各ページ hydration エントリ(薄い glue のみ)
+bundler/                    # Deno.bundle + tailwindcss ビルド -> bundled/
+examples/
+  gh-pages/                 # セルフホスト用テンプレート(静的 HTML + esm.sh 経由 import)
+tests/                      # 結合テスト(relay を実ソケットで叩く)
 ```
 
 方針:
 
-- **ドメインロジックは packages/core に寄せる**。`---` 分割・採番・権限判定・
-  key 生成はすべて pure function にして `Deno.test` で固める。
-- viewer 類は **フレームワーク非依存の Web Component**。audience ページ・
-  presenter ページ・player・(将来)埋め込みで同一実装を使い回す。
+- **ロジックは packages/zenpre に寄せる**。server と client(本体サイト)は
+  `@kuboon/zenpre` の薄い利用者にする。`---` 分割・採番・権限判定・key 生成は
+  すべて pure function にして `Deno.test` で固める。
+- viewer 類は **フレームワーク非依存の Web Component**。本体サイト・player・
+  セルフホスト GitHub Pages で同一実装を使い回す。
 - ファイル名は snake_case、TypeScript strict、テストは `@std/assert`。
+
+### `@kuboon/zenpre` の exports(packages/zenpre/deno.json)
+
+```jsonc
+{
+  "name": "@kuboon/zenpre",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./mod.ts",
+    "./render.ts": "./render.ts",
+    "./schemas.ts": "./schemas.ts",
+    "./relay_client.ts": "./relay_client.ts",
+    "./components.ts": "./components.ts", // 全 custom element を register する副作用 import
+    "./recorder.ts": "./recorder.ts",
+    "./player.ts": "./player.ts"
+  }
+}
+```
+
+- JSR の slow types 制約を満たす(公開 API に明示的型注釈)。
+- CI に `deno publish --dry-run` を組み込み、常に publish 可能な状態を保つ。
+- ブラウザからは `https://esm.sh/jsr/@kuboon/zenpre` で直接 import できることを
+  examples/gh-pages で保証する(bundler を要求しない)。
 
 ## 4. データモデルと KV スキーマ
 
 ```ts
-// packages/core/schemas.ts(arktype 定義から型を導出する)
+// packages/zenpre/schemas.ts(arktype 定義から型を導出する)
 type Slide = {
   slide_id: string; // 公開 ID(URL に載る)
   title: string; // markdown 先頭 h1 から自動抽出、なければ "Untitled"
-  markdown: string; // 原文のまま保存(パースはクライアント)
-  css: string; // 追加 CSS。daisyui theme 名は css 内 `/* theme: dark */` ではなく theme フィールドに分離
+  markdown: string; // 原文のまま保存(レンダリングは render.ts)
+  css: string; // 追加 CSS
   theme: string; // daisyUI theme 名(default: "light")
   created_at: string;
   updated_at: string; // ISO8601
@@ -106,7 +136,7 @@ type Slide = {
 
 type ZenEvent = {
   event_id: string;
-  slide_id: string;
+  slide_id: string | null; // セルフホスト(markdown を自サイトで供給)の場合は null
   begin_at: string; // ISO8601
   end_at: string | null;
   created_at: string;
@@ -115,21 +145,38 @@ type ZenEvent = {
 type TimelineEntry = { t: number /* begin からの経過 ms */; action: Action };
 ```
 
-KV キー設計(値は上記レコード。key 認証情報は本体と分離して保存):
+永続化層は [`jsr:@kuboon/kv`](https://jsr.io/@kuboon/kv) の `KvRepo`
+抽象で書く。 本番は `@kuboon/kv/denoKv.ts`、テストは `@kuboon/kv/memory.ts`
+を注入する。
 
-| key                                    | value                                | 備考                                                                             |
-| -------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------- |
-| `["slides", slide_id]`                 | `Slide`                              | markdown は 64KiB 制限に注意 → 超過時は 400 を返す(v1 は分割保存しない)          |
-| `["slide_keys", slide_id]`             | `{ key_hash: string }`               | SHA-256(slide_key)                                                               |
-| `["events", event_id]`                 | `ZenEvent`                           |                                                                                  |
-| `["event_keys", event_id]`             | `{ presenter_hash, moderator_hash }` | moderator_key は常に発行(使うかは任意)                                           |
-| `["slide_events", slide_id, event_id]` | `true`                               | slide からの逆引き                                                               |
-| `["timelines", event_id, seq]`         | `TimelineEntry[]`(~500 件/chunk)     | reaction を含むと 64KiB を超え得るため chunk 分割。`list({ prefix })` で全件復元 |
+```ts
+// server/repo/repos.ts
+import type { KvRepo } from "@kuboon/kv";
+import { DenoKvRepo } from "@kuboon/kv/denoKv.ts";
 
-**ID / key 生成**(`packages/core/keys.ts`)
+export type Repos = {
+  slides: KvRepo<Slide>; //            prefix ["slides"],       key: slide_id
+  slideKeys: KvRepo<KeyHash>; //       prefix ["slide_keys"],   key: slide_id
+  events: KvRepo<ZenEvent>; //         prefix ["events"],       key: event_id
+  eventKeys: KvRepo<EventKeyHashes>; //prefix ["event_keys"],   key: event_id
+  timelines: (event_id: string) => KvRepo<TimelineEntry[]>; // prefix ["timelines", event_id], key: seq
+  lastFocus: KvRepo<Action>; //        prefix ["last_focus"],   key: event_id(expireIn: 24h)
+};
+```
+
+- 書き込みは `repo.entry(id).update(() => value)`(楽観的並行制御は timeline
+  chunk の追記で活用)。
+- timeline は reaction を含むと 64KiB を超え得るため chunk 分割 (1 chunk ~500
+  件、`for await` で全 chunk 復元)。
+- `lastFocus` は deno-pubsub の「直近値を KV に保存して新規購読者へ返す」
+  パターンの流用(§8)。
+- slide の markdown が KV の 64KiB 値制限を超える場合は 400 を返す(v1
+  は分割保存しない)。
+
+**ID / key 生成**(`packages/zenpre/keys.ts`)
 
 - `slide_id` / `event_id` / `post_id`: `crypto.getRandomValues` → base58 8
-  文字(公開・URL 用)
+  文字(公開・URL 用。`KvRepo.genKey()` の ULID は URL に長いため使わない)
 - `slide_key` / `event_key`(presenter)/ `moderator_key`: base58 26 文字(≈152bit)
 - KV には **SHA-256 ハッシュのみ保存**。照合は `timingSafeEqual` 相当の比較。
 - key はレスポンスで一度だけ返す。紛失時の再発行は v1 では非対応。
@@ -144,31 +191,49 @@ KV キー設計(値は上記レコード。key 認証情報は本体と分離し
 | moderator | `moderator_key`                              | level-0 post の受信、post の level 昇格 + `post_id` 発行(複数接続可)                                   |
 | audience  | 不要(接続時に relay が `audience_id` を採番) | join / reaction / post(level 0 のみ)/ vote                                                             |
 
-## 6. markdown → スライド変換パイプライン
+## 6. markdown → スライド変換(`@kuboon/zenpre/render.ts`)
 
-パースは **クライアント側**(SlideViewer 内)で行う。サーバは markdown を
-そのまま保存・配信するだけにして、プレビューと本番の描画差異をなくす。
+**unified エコシステム**で md → html (multipage) を実装し、
+`@kuboon/zenpre/render.ts` として export する。DOM 非依存で書き、
+ブラウザ(SlideViewer 内)・サーバ(SSR)・GitHub Pages のビルド時、
+どこでも同じ結果になるようにする。
 
-1. **ページ分割**(`core/md/split.ts`): トップレベルの thematic break (`---`
-   単独行)で分割し、**page は 1 から採番**。
-   - コードフェンス内の `---`
-     は分割しない(フェンス深度を追跡する行スキャナで実装)。
-   - 先頭が YAML frontmatter の場合は無視して本文から開始。
-2. **heading 採番**: 各ページ内で h1〜h6 を出現順に **idx = 1 から採番**。
-   `idx = 0` はページ先頭を意味する。レンダリング時に
-   `data-page="3" data-idx="2"` を heading 要素へ付与。
-3. **レンダリング**: micromark で HTML 化。
-   - `` ```mermaid `` ブロック → プレースホルダ `<div data-mermaid>` を出力し、
-     ページ表示時に beautiful-mermaid を動的 import して描画。
-   - その他のコードブロック → shiki(`createHighlighter` を遅延生成、
-     言語もオンデマンドロード)。ハイライト完了前はプレーン `<pre>` を表示。
-4. **テーマ**: Shadow DOM 内に「tailwind+daisyUI のビルド済み CSS」
-   「`data-theme={slide.theme}`」「`slide.css`」の順で adoptedStyleSheets
-   を適用。
+```ts
+export type RenderedSlide = {
+  title: string; // 先頭 h1 のテキスト
+  pages: string[]; // ページごとの HTML(1 起点は配列 index + 1)
+  headings: { page: number; idx: number; depth: number; text: string }[];
+};
+export async function renderSlides(
+  markdown: string,
+  opts?: { theme?: string },
+): Promise<RenderedSlide>;
+```
 
-テスト: split/採番は入力 markdown → `{pages, headings}` のスナップショット的
-ユニットテストを最初に書く(フェンス内 `---`、frontmatter、heading
-なしページ等)。
+**パイプライン(AST 処理を最小化する)**
+
+shiki(`@shikijs/rehype`)は内部で unified/hast を使うので、 parse → 変換 →
+stringify を **1 本のパイプラインに統合**し、 mdast/hast の走査回数を最小にする:
+
+1. `remark-parse` + `remark-gfm` + `remark-frontmatter`(frontmatter は無視) →
+   mdast(**parse は 1 回だけ**)
+2. `remark-rehype` → hast(1 回)
+3. `@shikijs/rehype` — コードブロックのハイライト。highlighter は render.ts 内の
+   lazy singleton とし、言語はスライドに登場するもののみロード。
+4. 独自 rehype プラグイン(1 パスで同時に処理):
+   - `code.language-mermaid` → beautiful-mermaid の `renderMermaidSVG` で
+     **その場で SVG に変換**(同期・DOM 不要)。色は焼き込まず CSS custom
+     properties(bg/fg)参照で出力し、daisyUI theme の変数に
+     追随させる(beautiful-mermaid の live theme switching 機構)。
+   - heading(h1–h6)へ `data-idx` 付与(ページ内 1 起点。`idx=0` はページ先頭)。
+5. hast root 直下の `<hr>`(mdast の thematicBreak = `---` 由来)で **hast
+   を分割**して page 配列を作り、各ページを `rehype-stringify` で HTML 化。
+   文字列 split をしないので、コードフェンス内の `---` を誤って
+   ページ境界と扱う問題が構造的に起きない。
+
+テスト: `renderSlides` は入力 markdown → `{pages, headings, title}` の
+ユニットテストを最初に書く(フェンス内 `---`、frontmatter、heading なしページ、
+mermaid / コードハイライトのスモーク)。
 
 ## 7. Action プロトコル(ワイヤ仕様)
 
@@ -183,7 +248,13 @@ type Action =
 
 // relay が付与して配信する envelope
 type Down =
-  | { kind: "welcome"; audience_id: string; role: Role; count: number }
+  | {
+    kind: "welcome";
+    audience_id: string;
+    role: Role;
+    count: number;
+    last_focus?: Action;
+  }
   | { kind: "action"; action: Action; from: string; ts: number }
   | { kind: "count"; count: number } // 在室数(best-effort)
   | {
@@ -201,7 +272,10 @@ type Down =
 ## 8. Relay 設計(`server/relay/relay.ts`)
 
 エンドポイント: `GET /api/events/:event_id/ws`(WebSocket upgrade)。 クエリ
-`?key=` があれば presenter/moderator として認証、なければ audience。
+`?key=` があれば presenter/moderator として認証、なければ audience。 実装は
+[deno-pubsub](https://github.com/kuboon/deno-pubsub) の
+`routes/api/topics/[topicId].ts` を下敷きにする (`Deno.upgradeWebSocket` +
+`BroadcastChannel` + 直近値の KV 保存)。
 
 **isolate 間配信**: イベントごとに BroadcastChannel を 2 本使う。
 
@@ -221,6 +295,9 @@ type Down =
 3. `vote` は `stage` に流し、各クライアントが `(post_id, from)` で
    重複排除してローカル集計する(サーバは集計しない。真実は各画面の表示)。
 4. `focus` は presenter ロールのみ `stage` へ。audience からは `forbidden`。
+   同時に `lastFocus` repo へ保存(expireIn 24h)。**新規接続には welcome で
+   `last_focus` を返す**ので、途中参加・再接続でも現在ページに追従できる
+   (deno-pubsub の直近値 KV 保存パターン)。
 
 **rate limit**(`rate_limit.ts`、isolate 内メモリの token bucket / 接続単位)
 
@@ -230,18 +307,26 @@ type Down =
 **在室数**: isolate ごとの接続数を 10 秒周期で `stage` に gossip し、 各 isolate
 が合算して `count` を配る(best-effort、TTL 30 秒で減算)。
 
-**再接続**(`client/relay_client.ts`): 指数バックオフで自動再接続し、 再接続時に
-`join` を送り直す。relay は状態を持たない(直近 focus の 追従はプレゼン進行中の
-presenter が定期 re-broadcast することで解決: 30 秒ごと、または新規 join
-を見たときに現在の focus を再送)。
+**クロスオリジン**: セルフホスト(§14)から使えるよう、 WebSocket ハンドシェイクは
+Origin を制限しない。REST API(§12)は CORS
+を許可(`Access-Control-Allow-Origin: *`。認可はすべて capability key
+で行うため、cookie を使わない = CSRF の懸念がない)。
 
-## 9. フロントエンドコンポーネント
+**再接続**(`packages/zenpre/relay_client.ts`): 指数バックオフで自動再接続。
+`new RelayClient({ server, eventId, key? })` の形で接続先 server URL を
+設定可能にする(本体サイトでは同一 origin、セルフホストでは
+`https://zenpre.deno.dev` を指定)。
+
+## 9. フロントエンドコンポーネント(packages/zenpre/components/)
+
+いずれも `@kuboon/zenpre` から提供する Web Component。
+`import "@kuboon/zenpre/components.ts"` で custom element が register される。
 
 ### `<zen-slide-viewer>`(M1)
 
-- 初期化: `viewer.load({ markdown, css, theme })`。Shadow DOM に 横方向
-  scroll-snap のページ列を構築(1 ページ = 100dvw × 100dvh、 縦は各ページ内で
-  overflow-y: auto)。
+- 初期化: `viewer.load({ markdown, css, theme })`。内部で `renderSlides()` を
+  呼び、Shadow DOM に横方向 scroll-snap のページ列を構築 (1 ページ = 100dvw ×
+  100dvh、縦は各ページ内で overflow-y: auto)。
 - 操作: 左右スワイプ / ←→キー / タップ左右端 でページ遷移。
 - `viewer.apply(action)`:
   - `focus` → 該当ページへ snap 移動し `[data-idx]` へ scrollIntoView +
@@ -251,6 +336,8 @@ presenter が定期 re-broadcast することで解決: 30 秒ごと、または
   Controller がこれを focus action に変換する)。
 - **follow モード**: audience は既定で presenter の focus に追従。自分で
   スワイプしたら一時解除し、「追従に戻る」フローティングボタンを出す。
+- スタイル: Shadow DOM に「tailwind+daisyUI のビルド済み CSS」
+  「`data-theme={theme}`」「ユーザー css」の順で adoptedStyleSheets を適用。
 
 ### `<zen-reaction-layer>`(M2)
 
@@ -285,19 +372,21 @@ presenter が定期 re-broadcast することで解決: 30 秒ごと、または
 - **Player**(`/e/:event_id/replay`): slide + timeline を fetch し、 `setTimeout`
   ベースのスケジューラで SlideViewer / PostViewer に
   `apply()`。再生/一時停止/シークバー(シークは t 以前の focus/post を
-  リプレイして状態を再構築、reaction はスキップ)。
+  リプレイして状態を再構築、reaction はスキップ)。 Recorder / Player とも
+  `@kuboon/zenpre` の export。
 
 ## 11. Moderator の自動化
 
-- **BlacklistModerator**(M3): クライアント側モジュール。NG ワードリスト (event
-  設定 or ローカル)に非マッチの level-0 post を自動で level 1 に
-  昇格して配信。ModeratorUi と併用可(自動昇格を人が下げることもできる)。
+- **BlacklistModerator**(M3、`@kuboon/zenpre/moderators/blacklist.ts`):
+  クライアント側モジュール。NG ワードリスト(event 設定 or ローカル)に 非マッチの
+  level-0 post を自動で level 1 に昇格して配信。 ModeratorUi
+  と併用可(自動昇格を人が下げることもできる)。
 - **ModeratorMcp**(M5): `/mcp` に `list_pending_posts(event_id, moderator_key)`
   / `publish_post(event_id, moderator_key, text, level)` ツールを追加し、 LLM
   がモデレーターとして参加できるようにする。level-0 post は relay 側で直近 100
   件をリングバッファに保持して MCP から取得可能にする。
 
-## 12. Remote MCP(M5)
+## 12. Remote MCP と REST API(M5)
 
 `server/mcp.ts` — `@modelcontextprotocol/sdk` の Streamable HTTP transport を
 fetch-router のルート `/mcp` に接続。認可は tool 引数の key で行う(OAuth なし)。
@@ -306,7 +395,10 @@ fetch-router のルート `/mcp` に接続。認可は tool 引数の key で行
 | -------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
 | `upload_slide` | `markdown, css?, theme?`                       | `{ slide_id, slide_key, preview_url }`                                |
 | `edit_slide`   | `slide_id, slide_key, markdown?, css?, theme?` | `{ ok, preview_url }`                                                 |
-| `create_event` | `slide_id, slide_key, begin_at, end_at?`       | `{ event_id, event_key, moderator_key, audience_url, presenter_url }` |
+| `create_event` | `slide_id?, slide_key?, begin_at, end_at?`     | `{ event_id, event_key, moderator_key, audience_url, presenter_url }` |
+
+`create_event` の `slide_id` は optional: セルフホスト(§14)では markdown を
+自サイトから供給するため、**リレー機能だけのイベント**を作成できる。
 
 REST API も同じ controller を共有する(MCP tool は薄い wrapper):
 
@@ -314,14 +406,16 @@ REST API も同じ controller を共有する(MCP tool は薄い wrapper):
 POST  /api/slides                      -> upload_slide 相当
 PATCH /api/slides/:slide_id            -> edit_slide 相当(X-Slide-Key)
 GET   /api/slides/:slide_id            -> {title, markdown, css, theme}(公開)
-POST  /api/events                      -> create_event 相当(X-Slide-Key)
+POST  /api/events                      -> create_event 相当(slide 紐付け時は X-Slide-Key)
 GET   /api/events/:event_id            -> {slide_id, begin_at, end_at}(公開)
 GET   /api/events/:event_id/ws         -> WebSocket upgrade
 PUT   /api/events/:event_id/timeline   -> chunk 追記(X-Event-Key)
 GET   /api/events/:event_id/timeline   -> 全 chunk 結合(公開、end_at 後のみ)
 ```
 
-## 13. ページルーティング
+全 API に CORS(`Access-Control-Allow-Origin: *`)を付ける(§8 参照)。
+
+## 13. ページルーティング(本体サイト zenpre.deno.dev)
 
 | path                          | 内容                                                         |
 | ----------------------------- | ------------------------------------------------------------ |
@@ -332,33 +426,66 @@ GET   /api/events/:event_id/timeline   -> 全 chunk 結合(公開、end_at 後�
 | `/e/:event_id/moderate#key=…` | ModeratorUi 単体                                             |
 | `/e/:event_id/replay`         | Player                                                       |
 
-## 14. テスト・CI
+いずれのページも `@kuboon/zenpre` のコンポーネントを配置するだけの
+薄い実装にする(セルフホストと同じコードパスを通す = dogfooding)。
 
-- **unit**(packages/core): md 分割・採番、key 生成/ハッシュ照合、 rate
-  limiter、arktype スキーマの受理/拒否表。
+## 14. セルフホスト(GitHub Pages)
+
+ユーザが `@kuboon/zenpre` を組み込んだ静的サイト(GitHub Pages 等)を立ち上げ、
+zenpre.deno.dev は **relay(と必要なら event 管理)だけ**を提供する構成。
+
+- `examples/gh-pages/` にテンプレートを置く。ビルド不要の 1 枚 HTML:
+
+```html
+<script type="module">
+import "https://esm.sh/jsr/@kuboon/zenpre/components.ts";
+const viewer = document.querySelector("zen-slide-viewer");
+viewer.load({ markdown: await (await fetch("./slides.md")).text() });
+viewer.connect({ server: "https://zenpre.deno.dev", eventId: "..." });
+</script>
+<zen-slide-viewer></zen-slide-viewer>
+```
+
+- markdown・css は自サイトに置く(server の KV には保存しない)。 event は
+  `create_event`(slide_id なし)で発行し、relay のみ利用する。
+- これを成立させる server 側要件は §8 / §12 で担保: Origin 制限なしの WS、CORS
+  付き REST、slide なし event。
+- presenter ページも同テンプレートに含める(`#key=` を読んで Controller を出す)。
+
+## 15. テスト・CI
+
+- **unit**(packages/zenpre): `renderSlides`(分割・採番・shiki・mermaid)、 key
+  生成/ハッシュ照合、rate limiter、arktype スキーマの受理/拒否表。
+- **repo 層**: `@kuboon/kv/memory.ts` を注入してサーバ controller を KV
+  実体なしでテスト。
 - **relay 結合テスト**(tests/): `Deno.serve` を ephemeral port で立て、 実
   WebSocket を 3 本(presenter / audience×2)張って権限マトリクスを検証 (audience
-  の focus が拒否される、level-0 が audience に届かない、等)。
+  の focus が拒否される、level-0 が audience に届かない、 welcome で last_focus
+  が返る、等)。
 - **CI**(`.github/workflows/ci.yml`): `denoland/setup-deno@v2` →
-  `deno task check` → `deno task test` → `deno task build`(bundler)。
+  `deno task check` → `deno task test` → `deno task build`(bundler) →
+  `deno publish --dry-run`(packages/zenpre)。
+- **JSR publish**: tag push で `jsr publish`(GitHub Actions OIDC)。
 - E2E(Playwright での swipe/描画確認)は M3 以降に smoke のみ追加。
 
-## 15. マイルストーン
+## 16. マイルストーン
 
 各マイルストーンは独立に main へマージ可能な単位。完了条件(DoD)を満たすこと。
 
 - **M0 — 作り直しスキャフォールド** 既存 `lume/` `server/` `schemas.ts`
   `types.ts` を削除し、§3 の workspace を deno-remix-reference
-  準拠で構築。CI・SessionStart hook・Deploy 設定。 _DoD: `deno task check` /
-  `deno task test` green、トップページが Deploy で 200。_
-- **M1 — Slide ドメイン + SlideViewer** schemas / keys / KV repo / slides
-  API、md パイプライン、`<zen-slide-viewer>`
-  (分割・採番・swipe/scroll・shiki・mermaid・daisyUI theme)、`/s/:slide_id`。
-  _DoD: curl で入稿した markdown が `/s/:id` でスライド表示され、md 系 unit test
-  が通る。_
+  準拠で構築(packages/zenpre は空殻 + publish dry-run)。 CI・SessionStart
+  hook・Deploy 設定。 _DoD: `deno task check` / `deno task test` /
+  `deno publish --dry-run` green、 トップページが Deploy で 200。_
+- **M1 — render.ts + SlideViewer + Slide API** schemas / keys /
+  `render.ts`(unified + shiki + beautiful-mermaid)、
+  `<zen-slide-viewer>`(採番・swipe/scroll・daisyUI theme)、 @kuboon/kv ベースの
+  repo 層と slides API、`/s/:slide_id`。 _DoD: curl で入稿した markdown が
+  `/s/:id` でスライド表示され、 renderSlides の unit test が通る。_
 - **M2 — Event + Relay + focus/reaction/join** events
-  API、relay(ロール認証・stage チャンネル・rate limit・count)、 audience
-  ページ、Controller v1(ページ送り = focus 配信)、reaction layer。 _DoD: 2
+  API、relay(ロール認証・stage チャンネル・last_focus・rate limit・
+  count・CORS)、audience ページ、Controller v1(ページ送り = focus 配信)、
+  reaction layer。**`@kuboon/zenpre` 0.1.0 を JSR に初回リリース**。 _DoD: 2
   ブラウザ間で focus 追従と reaction が動く。relay 結合テスト green。_
 - **M3 — post / vote / moderation** mod
   チャンネル、PostViewer、ModeratorUi、BlacklistModerator、vote 集計。 _DoD:
@@ -369,16 +496,30 @@ GET   /api/events/:event_id/timeline   -> 全 chunk 結合(公開、end_at 後�
 - **M5 — Remote MCP + ModeratorMcp** `/mcp`(upload_slide / edit_slide /
   create_event / moderator tools)。 _DoD: Claude 等の MCP クライアントから slide
   作成 → event 作成 → URL 取得が通る。_
-- **M6 — 仕上げ(任意)** WebAudio の音種追加、focus
-  再送の調整、PWA(a2hs)、パフォーマンス。
+- **M6 — セルフホスト example + 仕上げ** `examples/gh-pages/`(slide_id なし
+  event + esm.sh import で動くことを実証)、 WebAudio
+  の音種追加、PWA(a2hs)、パフォーマンス。 _DoD: example をそのまま GitHub Pages
+  に置いて zenpre.deno.dev の relay だけでプレゼンが成立する。_
 
-## 16. 主要な設計判断の理由(要旨)
+## 17. 主要な設計判断の理由(要旨)
 
-- **markdown をクライアントでパース**: サーバ保存は原文のみ。プレビュー =
-  本番描画、サーバは静的配信 + relay に徹してスケールと単純さを取る。
+- **フロント機能を JSR パッケージに集約**: 本体サイト自身も `@kuboon/zenpre`
+  の利用者として書くことで、セルフホストと本体のコードパスが常に一致し、
+  パッケージの API が dogfooding で検証される。
+- **render.ts を isomorphic に**: beautiful-mermaid が DOM 不要・同期、 shiki が
+  rehype プラグインで提供されるため、ブラウザ/サーバ/静的ビルドの
+  どこでも同一結果。プレビュー = 本番描画。
+- **unified 1 パイプライン + hast 分割**: parse 1 回・変換 1 回に抑え、
+  ページ分割は最終 hast の root 直下 `<hr>` で行う。文字列 split を避ける
+  ことでコードフェンス内 `---` の誤分割が構造的に起きない。
+- **KvRepo 抽象(@kuboon/kv)**: controller/relay を `KvRepo` 型に対して
+  書き、テストは memory、本番は Deno KV。将来 Turso 等への移行余地も残る。
 - **BroadcastChannel を 2 本に分離**: 「level-0 は配信されない」「moderator を
   通ってから全員へ」という要件を、購読権限の分離という最も単純な形で満たす。
+- **直近 focus の KV 保存(deno-pubsub パターン)**: 途中参加者・再接続者が
+  welcome だけで現在ページに同期でき、presenter の定期再送が不要。
 - **vote はクライアント集計**: サーバ集計は isolate 間で整合を取るコストが
   高い。プレゼンの UX 上は best-effort で十分。
 - **key はハッシュ保存 + 一度だけ返す**: KV 流出時にも presenter 権限を
-  奪えない。アカウントレスの capability モデルと整合。
+  奪えない。アカウントレスの capability モデルと整合。cookie 不使用なので CORS
+  全開放でも CSRF リスクがない。
