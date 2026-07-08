@@ -7,12 +7,6 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
 jobs:
   check:
     permissions:
@@ -32,3 +26,8 @@ jobs:
           path: ${{ steps.deno-dir.outputs.denoDir }}
           key: ${{ runner.os }}-deno
       - run: deno task check
+      - run: deno task test
+      - run: deno task build
+      - name: publish dry-run (@kuboon/zenpre)
+        run: deno publish --dry-run --allow-slow-types
+        working-directory: packages/zenpre
