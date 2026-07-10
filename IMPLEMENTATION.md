@@ -12,9 +12,9 @@
   をそのままプレゼンにする。スマホ縦持ちフル画面がネイティブ。
   左右スワイプでページ遷移、上下スクロールでページ内移動。
 - presenter の操作(focus)・audience の reaction / post / vote が
-  同じイベントを見ている全ブラウザにリアルタイム反映される。
+  同じトークを見ている全ブラウザにリアルタイム反映される。
 - presenter の操作を timeline として記録し、後から再生できる。
-- LLM から remote MCP でスライド作成・イベント作成ができる。
+- LLM から remote MCP でスライド作成・トーク作成ができる。
 - フロントエンド機能の大半を **JSR パッケージ `@kuboon/zenpre`** として公開し、
   ユーザが自分の GitHub Pages に組み込んで **server
   のリレー機能だけを利用する**セルフホスト構成を可能にする。
@@ -58,7 +58,7 @@ packages/
   zenpre/                   # JSR: @kuboon/zenpre — フロント機能の大半をここに置く
     deno.json               # name/version/exports(JSR publish 設定)
     mod.ts                  # 主要 API の re-export
-    schemas.ts              # arktype: Slide, Event, Action, ワイヤ envelope
+    schemas.ts              # arktype: Slide, Talk, Action, ワイヤ envelope
     keys.ts                 # id/key 生成・ハッシュ化(WebCrypto のみ使用)
     render.ts               # md -> html (multipage)。unified + shiki + beautiful-mermaid
     relay_client.ts         # WS 再接続・envelope 型付け(server URL は設定可能)
@@ -79,7 +79,7 @@ server/                     # zenpre.deno.dev 本体(@kuboon/zenpre に workspac
     relay.ts                # WebSocket ハブ(このファイルにロジック集約)
     rate_limit.ts           # token bucket
   repo/                     # KvRepo(@kuboon/kv)ベースの永続化層
-    repos.ts                # slides / events / timelines の KvRepo 構築
+    repos.ts                # slides / talks / timelines の KvRepo 構築
   mcp.ts                    # MCP サーバ定義(/mcp)
 client/                     # 本体サイトの各ページ hydration エントリ(薄い glue のみ)
 bundler/                    # Deno.bundle + tailwindcss ビルド -> bundled/
@@ -134,8 +134,8 @@ type Slide = {
   updated_at: string; // ISO8601
 };
 
-type ZenEvent = {
-  event_id: string;
+type Talk = {
+  talk_id: string;
   slide_id: string | null; // セルフホスト(markdown を自サイトで供給)の場合は null
   begin_at: string; // ISO8601
   end_at: string | null;
@@ -157,10 +157,10 @@ import { DenoKvRepo } from "@kuboon/kv/denoKv.ts";
 export type Repos = {
   slides: KvRepo<Slide>; //            prefix ["slides"],       key: slide_id
   slideKeys: KvRepo<KeyHash>; //       prefix ["slide_keys"],   key: slide_id
-  events: KvRepo<ZenEvent>; //         prefix ["events"],       key: event_id
-  eventKeys: KvRepo<EventKeyHashes>; //prefix ["event_keys"],   key: event_id
-  timelines: (event_id: string) => KvRepo<TimelineEntry[]>; // prefix ["timelines", event_id], key: seq
-  lastFocus: KvRepo<Action>; //        prefix ["last_focus"],   key: event_id(expireIn: 24h)
+  talks: KvRepo<Talk>; //              prefix ["talks"],        key: talk_id
+  talkKeys: KvRepo<TalkKeyHashes>; //  prefix ["talk_keys"],    key: talk_id
+  timelines: (talk_id: string) => KvRepo<TimelineEntry[]>; // prefix ["timelines", talk_id], key: seq
+  lastFocus: KvRepo<Action>; //        prefix ["last_focus"],   key: talk_id(expireIn: 24h)
 };
 ```
 
@@ -175,9 +175,9 @@ export type Repos = {
 
 **ID / key 生成**(`packages/zenpre/keys.ts`)
 
-- `slide_id` / `event_id` / `post_id`: `crypto.getRandomValues` → base58 8
+- `slide_id` / `talk_id` / `post_id`: `crypto.getRandomValues` → base58 8
   文字(公開・URL 用。`KvRepo.genKey()` の ULID は URL に長いため使わない)
-- `slide_key` / `event_key`(presenter)/ `moderator_key`: base58 26 文字(≈152bit)
+- `slide_key` / `talk_key`(presenter)/ `moderator_key`: base58 26 文字(≈152bit)
 - KV には **SHA-256 ハッシュのみ保存**。照合は `timingSafeEqual` 相当の比較。
 - key はレスポンスで一度だけ返す。紛失時の再発行は v1 では非対応。
 
@@ -187,7 +187,7 @@ export type Repos = {
 
 | ロール    | 認証                                         | できること                                                                                             |
 | --------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| presenter | `event_key`                                  | focus の pub、level-0 post の受信、post の level 昇格 + `post_id` 発行、reaction/vote、timeline の保存 |
+| presenter | `talk_key`                                   | focus の pub、level-0 post の受信、post の level 昇格 + `post_id` 発行、reaction/vote、timeline の保存 |
 | moderator | `moderator_key`                              | level-0 post の受信、post の level 昇格 + `post_id` 発行(複数接続可)                                   |
 | audience  | 不要(接続時に relay が `audience_id` を採番) | join / reaction / post(level 0 のみ)/ vote                                                             |
 
@@ -271,17 +271,17 @@ type Down =
 
 ## 8. Relay 設計(`server/relay/relay.ts`)
 
-エンドポイント: `GET /api/events/:event_id/ws`(WebSocket upgrade)。 クエリ
-`?key=` があれば presenter/moderator として認証、なければ audience。 実装は
+エンドポイント: `GET /api/talks/:talk_id/ws`(WebSocket upgrade)。 クエリ `?key=`
+があれば presenter/moderator として認証、なければ audience。 実装は
 [deno-pubsub](https://github.com/kuboon/deno-pubsub) の
 `routes/api/topics/[topicId].ts` を下敷きにする (`Deno.upgradeWebSocket` +
 `BroadcastChannel` + 直近値の KV 保存)。
 
-**isolate 間配信**: イベントごとに BroadcastChannel を 2 本使う。
+**isolate 間配信**: トークごとに BroadcastChannel を 2 本使う。
 
-- `evt:{event_id}:stage` … 全員に配信するもの(focus / reaction / vote / level≥1
+- `talk:{talk_id}:stage` … 全員に配信するもの(focus / reaction / vote / level≥1
   の post / count)
-- `evt:{event_id}:mod` … **level-0 post 専用**。presenter / moderator の
+- `talk:{talk_id}:mod` … **level-0 post 専用**。presenter / moderator の
   接続だけが購読する。→「audience の post は moderator を通ってから
   全員へ」の要件をチャンネル分離で実現する。
 
@@ -313,7 +313,7 @@ Origin を制限しない。REST API(§12)は CORS
 で行うため、cookie を使わない = CSRF の懸念がない)。
 
 **再接続**(`packages/zenpre/relay_client.ts`): 指数バックオフで自動再接続。
-`new RelayClient({ server, eventId, key? })` の形で接続先 server URL を
+`new RelayClient({ server, talkId, key? })` の形で接続先 server URL を
 設定可能にする(本体サイトでは同一 origin、セルフホストでは
 `https://zenpre.deno.dev` を指定)。
 
@@ -356,7 +356,7 @@ Origin を制限しない。REST API(§12)は CORS
 
 - 上半分: SlideViewer(操作すると focus を pub)。
 - 下半分タブ: 「Posts(ModeratorUi 兼用)」「Reactions テスト」「Recorder」。
-- `event_key` は URL fragment (`#key=...`) で受け取り localStorage に保存 (query
+- `talk_key` は URL fragment (`#key=...`) で受け取り localStorage に保存 (query
   に載せずサーバログに残さない)。
 
 ### `<zen-moderator-ui>`(M3)
@@ -368,8 +368,8 @@ Origin を制限しない。REST API(§12)は CORS
 
 - **Recorder**(presenter の Controller 内): 記録開始時刻を 0 として、 自分が pub
   した action と `stage` で受信した action を `{t, action}` で buffer。30 秒ごと
-  & 終了時に `PUT /api/events/:id/timeline`(presenter key 必須)で chunk 追記。
-- **Player**(`/e/:event_id/replay`): slide + timeline を fetch し、 `setTimeout`
+  & 終了時に `PUT /api/talks/:id/timeline`(presenter key 必須)で chunk 追記。
+- **Player**(`/t/:talk_id/replay`): slide + timeline を fetch し、 `setTimeout`
   ベースのスケジューラで SlideViewer / PostViewer に
   `apply()`。再生/一時停止/シークバー(シークは t 以前の focus/post を
   リプレイして状態を再構築、reaction はスキップ)。 Recorder / Player とも
@@ -378,11 +378,11 @@ Origin を制限しない。REST API(§12)は CORS
 ## 11. Moderator の自動化
 
 - **BlacklistModerator**(M3、`@kuboon/zenpre/moderators/blacklist.ts`):
-  クライアント側モジュール。NG ワードリスト(event 設定 or ローカル)に 非マッチの
+  クライアント側モジュール。NG ワードリスト(talk 設定 or ローカル)に 非マッチの
   level-0 post を自動で level 1 に昇格して配信。 ModeratorUi
   と併用可(自動昇格を人が下げることもできる)。
-- **ModeratorMcp**(M5): `/mcp` に `list_pending_posts(event_id, moderator_key)`
-  / `publish_post(event_id, moderator_key, text, level)` ツールを追加し、 LLM
+- **ModeratorMcp**(M5): `/mcp` に `list_pending_posts(talk_id, moderator_key)` /
+  `publish_post(talk_id, moderator_key, text, level)` ツールを追加し、 LLM
   がモデレーターとして参加できるようにする。level-0 post は relay 側で直近 100
   件をリングバッファに保持して MCP から取得可能にする。
 
@@ -391,14 +391,14 @@ Origin を制限しない。REST API(§12)は CORS
 `server/mcp.ts` — `@modelcontextprotocol/sdk` の Streamable HTTP transport を
 fetch-router のルート `/mcp` に接続。認可は tool 引数の key で行う(OAuth なし)。
 
-| tool           | 引数                                           | 返り値                                                                |
-| -------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
-| `upload_slide` | `markdown, css?, theme?`                       | `{ slide_id, slide_key, preview_url }`                                |
-| `edit_slide`   | `slide_id, slide_key, markdown?, css?, theme?` | `{ ok, preview_url }`                                                 |
-| `create_event` | `slide_id?, slide_key?, begin_at, end_at?`     | `{ event_id, event_key, moderator_key, audience_url, presenter_url }` |
+| tool           | 引数                                           | 返り値                                                              |
+| -------------- | ---------------------------------------------- | ------------------------------------------------------------------- |
+| `upload_slide` | `markdown, css?, theme?`                       | `{ slide_id, slide_key, preview_url }`                              |
+| `edit_slide`   | `slide_id, slide_key, markdown?, css?, theme?` | `{ ok, preview_url }`                                               |
+| `create_talk`  | `slide_id?, slide_key?, begin_at, end_at?`     | `{ talk_id, talk_key, moderator_key, audience_url, presenter_url }` |
 
-`create_event` の `slide_id` は optional: セルフホスト(§14)では markdown を
-自サイトから供給するため、**リレー機能だけのイベント**を作成できる。
+`create_talk` の `slide_id` は optional: セルフホスト(§14)では markdown を
+自サイトから供給するため、**リレー機能だけのトーク**を作成できる。
 
 REST API も同じ controller を共有する(MCP tool は薄い wrapper):
 
@@ -406,25 +406,25 @@ REST API も同じ controller を共有する(MCP tool は薄い wrapper):
 POST  /api/slides                      -> upload_slide 相当
 PATCH /api/slides/:slide_id            -> edit_slide 相当(X-Slide-Key)
 GET   /api/slides/:slide_id            -> {title, markdown, css, theme}(公開)
-POST  /api/events                      -> create_event 相当(slide 紐付け時は X-Slide-Key)
-GET   /api/events/:event_id            -> {slide_id, begin_at, end_at}(公開)
-GET   /api/events/:event_id/ws         -> WebSocket upgrade
-PUT   /api/events/:event_id/timeline   -> chunk 追記(X-Event-Key)
-GET   /api/events/:event_id/timeline   -> 全 chunk 結合(公開、end_at 後のみ)
+POST  /api/talks                      -> create_talk 相当(slide 紐付け時は X-Slide-Key)
+GET   /api/talks/:talk_id            -> {slide_id, begin_at, end_at}(公開)
+GET   /api/talks/:talk_id/ws         -> WebSocket upgrade
+PUT   /api/talks/:talk_id/timeline   -> chunk 追記(X-Talk-Key)
+GET   /api/talks/:talk_id/timeline   -> 全 chunk 結合(公開、end_at 後のみ)
 ```
 
 全 API に CORS(`Access-Control-Allow-Origin: *`)を付ける(§8 参照)。
 
 ## 13. ページルーティング(本体サイト zenpre.deno.dev)
 
-| path                          | 内容                                                         |
-| ----------------------------- | ------------------------------------------------------------ |
-| `/`                           | トップ: サービス説明 + slide_id/event_id 入力 + MCP 接続手順 |
-| `/s/:slide_id`                | スライド単体プレビュー(relay なし。作成直後の確認用)         |
-| `/e/:event_id`                | audience ビュー(SlideViewer + reaction 送信 + PostViewer)    |
-| `/e/:event_id/present#key=…`  | presenter Controller                                         |
-| `/e/:event_id/moderate#key=…` | ModeratorUi 単体                                             |
-| `/e/:event_id/replay`         | Player                                                       |
+| path                         | 内容                                                        |
+| ---------------------------- | ----------------------------------------------------------- |
+| `/`                          | トップ: サービス説明 + slide_id/talk_id 入力 + MCP 接続手順 |
+| `/s/:slide_id`               | スライド単体プレビュー(relay なし。作成直後の確認用)        |
+| `/t/:talk_id`                | audience ビュー(SlideViewer + reaction 送信 + PostViewer)   |
+| `/t/:talk_id/present#key=…`  | presenter Controller                                        |
+| `/t/:talk_id/moderate#key=…` | ModeratorUi 単体                                            |
+| `/t/:talk_id/replay`         | Player                                                      |
 
 いずれのページも `@kuboon/zenpre` のコンポーネントを配置するだけの
 薄い実装にする(セルフホストと同じコードパスを通す = dogfooding)。
@@ -432,7 +432,7 @@ GET   /api/events/:event_id/timeline   -> 全 chunk 結合(公開、end_at 後�
 ## 14. セルフホスト(GitHub Pages)
 
 ユーザが `@kuboon/zenpre` を組み込んだ静的サイト(GitHub Pages 等)を立ち上げ、
-zenpre.deno.dev は **relay(と必要なら event 管理)だけ**を提供する構成。
+zenpre.deno.dev は **relay(と必要なら talk 管理)だけ**を提供する構成。
 
 - `examples/gh-pages/` にテンプレートを置く。ビルド不要の 1 枚 HTML:
 
@@ -441,15 +441,15 @@ zenpre.deno.dev は **relay(と必要なら event 管理)だけ**を提供する
 import "https://esm.sh/jsr/@kuboon/zenpre/components.ts";
 const viewer = document.querySelector("zen-slide-viewer");
 viewer.load({ markdown: await (await fetch("./slides.md")).text() });
-viewer.connect({ server: "https://zenpre.deno.dev", eventId: "..." });
+viewer.connect({ server: "https://zenpre.deno.dev", talkId: "..." });
 </script>
 <zen-slide-viewer></zen-slide-viewer>
 ```
 
-- markdown・css は自サイトに置く(server の KV には保存しない)。 event は
-  `create_event`(slide_id なし)で発行し、relay のみ利用する。
+- markdown・css は自サイトに置く(server の KV には保存しない)。 talk は
+  `create_talk`(slide_id なし)で発行し、relay のみ利用する。
 - これを成立させる server 側要件は §8 / §12 で担保: Origin 制限なしの WS、CORS
-  付き REST、slide なし event。
+  付き REST、slide なし talk。
 - presenter ページも同テンプレートに含める(`#key=` を読んで Controller を出す)。
 
 ## 15. テスト・CI
@@ -482,22 +482,22 @@ viewer.connect({ server: "https://zenpre.deno.dev", eventId: "..." });
   `<zen-slide-viewer>`(採番・swipe/scroll・daisyUI theme)、 @kuboon/kv ベースの
   repo 層と slides API、`/s/:slide_id`。 _DoD: curl で入稿した markdown が
   `/s/:id` でスライド表示され、 renderSlides の unit test が通る。_
-- **M2 — Event + Relay + focus/reaction/join** events
-  API、relay(ロール認証・stage チャンネル・last_focus・rate limit・
-  count・CORS)、audience ページ、Controller v1(ページ送り = focus 配信)、
-  reaction layer。**`@kuboon/zenpre` 0.1.0 を JSR に初回リリース**。 _DoD: 2
-  ブラウザ間で focus 追従と reaction が動く。relay 結合テスト green。_
+- **M2 — Talk + Relay + focus/reaction/join** talks API、relay(ロール認証・stage
+  チャンネル・last_focus・rate limit・ count・CORS)、audience ページ、Controller
+  v1(ページ送り = focus 配信)、 reaction layer。**`@kuboon/zenpre` 0.1.0 を JSR
+  に初回リリース**。 _DoD: 2 ブラウザ間で focus 追従と reaction が動く。relay
+  結合テスト green。_
 - **M3 — post / vote / moderation** mod
   チャンネル、PostViewer、ModeratorUi、BlacklistModerator、vote 集計。 _DoD:
   audience の post が moderator 承認後にのみ全員へ届き、vote 順でソートされる。_
 - **M4 — Recorder & Player** timeline chunk 保存
-  API、Recorder、`/e/:id/replay`。 _DoD: 記録したプレゼンが replay
+  API、Recorder、`/t/:id/replay`。 _DoD: 記録したプレゼンが replay
   でページ送り・post 含めて再現される。_
 - **M5 — Remote MCP + ModeratorMcp** `/mcp`(upload_slide / edit_slide /
-  create_event / moderator tools)。 _DoD: Claude 等の MCP クライアントから slide
-  作成 → event 作成 → URL 取得が通る。_
+  create_talk / moderator tools)。 _DoD: Claude 等の MCP クライアントから slide
+  作成 → talk 作成 → URL 取得が通る。_
 - **M6 — セルフホスト example + 仕上げ** `examples/gh-pages/`(slide_id なし
-  event + esm.sh import で動くことを実証)、 WebAudio
+  talk + esm.sh import で動くことを実証)、 WebAudio
   の音種追加、PWA(a2hs)、パフォーマンス。 _DoD: example をそのまま GitHub Pages
   に置いて zenpre.deno.dev の relay だけでプレゼンが成立する。_
 
