@@ -1,8 +1,8 @@
 /**
  * 公開 ID と capability key の生成・検証。
  *
- * - 公開 ID(slide_id / event_id / post_id): base58 8 文字。URL に載る。
- * - secret key(slide_key / event_key / moderator_key): base58 26 文字(≈152bit)。
+ * - 公開 ID(slide_id / talk_id / post_id): base58 8 文字。URL に載る。
+ * - secret key(slide_key / talk_key / moderator_key): base58 26 文字(≈152bit)。
  *   発行時に一度だけ返し、サーバは SHA-256 ハッシュのみ保存する。
  *
  * WebCrypto のみ使用(ブラウザ / Deno / edge で同一動作)。
@@ -33,12 +33,12 @@ function randomBase58(length: number): string {
   return out.join("");
 }
 
-/** 公開 ID(slide_id / event_id / post_id)を生成する。 */
+/** 公開 ID(slide_id / talk_id / post_id)を生成する。 */
 export function genPublicId(): string {
   return randomBase58(PUBLIC_ID_LENGTH);
 }
 
-/** secret key(slide_key / event_key / moderator_key)を生成する。 */
+/** secret key(slide_key / talk_key / moderator_key)を生成する。 */
 export function genSecretKey(): string {
   return randomBase58(SECRET_KEY_LENGTH);
 }

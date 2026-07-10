@@ -3,8 +3,8 @@ import {
   ActionSchema,
   DownSchema,
   SlideSchema,
+  TalkSchema,
   TimelineEntrySchema,
-  ZenEventSchema,
 } from "./schemas.ts";
 import { type } from "arktype";
 
@@ -46,9 +46,9 @@ Deno.test("SlideSchema rejects non-ISO timestamps", () => {
   });
 });
 
-Deno.test("ZenEventSchema allows relay-only events (slide_id: null)", () => {
-  accepts(ZenEventSchema, {
-    event_id: "Ev3nt1dX",
+Deno.test("TalkSchema allows relay-only talks (slide_id: null)", () => {
+  accepts(TalkSchema, {
+    talk_id: "Ta1k1dXx",
     slide_id: null,
     begin_at: now,
     end_at: null,

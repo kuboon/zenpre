@@ -34,17 +34,19 @@ export const SlideSchema = type({
 export type Slide = typeof SlideSchema.infer;
 
 /**
- * プレゼンイベント。`slide_id: null` は「リレー機能だけのイベント」
- * (セルフホスト構成で markdown を自サイトから供給する場合)。
+ * プレゼンの開催枠(1 回のトーク)。`slide_id: null` は「リレー機能だけの
+ * トーク」(セルフホスト構成で markdown を自サイトから供給する場合)。
+ *
+ * Web/DOM の `Event` と紛らわしいため、この概念は Talk と呼ぶ。
  */
-export const ZenEventSchema = type({
-  event_id: "string",
+export const TalkSchema = type({
+  talk_id: "string",
   slide_id: "string | null",
   begin_at: IsoDate,
   end_at: IsoDate.or("null"),
   created_at: IsoDate,
 });
-export type ZenEvent = typeof ZenEventSchema.infer;
+export type Talk = typeof TalkSchema.infer;
 
 // ---------------------------------------------------------------------------
 // Action(リアルタイムに relay を流れる操作)

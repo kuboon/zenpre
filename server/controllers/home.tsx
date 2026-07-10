@@ -39,7 +39,7 @@ export const homeAction = {
                 をリアルタイム同期
               </li>
               <li>プレゼンの記録と再生(timeline)</li>
-              <li>remote MCP からスライド作成・イベント作成</li>
+              <li>remote MCP からスライド作成・トーク作成</li>
             </ul>
             <p class="text-sm opacity-70">
               実装計画は{" "}

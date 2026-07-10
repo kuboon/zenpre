@@ -18,7 +18,7 @@ deno deno deploy deno kv
     - [ ] in slide actions 後述
   - [x] css
     - [x] daisyui theme対応
-- [x] event
+- [x] talk
   - [x] start_at (begin_at)
   - [x] end_at
   - [ ] presenter key
@@ -65,7 +65,7 @@ https://github.com/kuboon/deno-pubsub/blob/main/routes/api/topics/%5BtopicId%5D.
 
 - 権限
   - [ ] presenter
-    - [ ] event_key で認証
+    - [ ] talk_key で認証
     - [ ] focus を pub 出来る
     - [ ] post level 0 を受け取れる
     - [ ] post level を上げて配信出来る
@@ -102,5 +102,5 @@ audience からの post は moderator だけがまず受け取り、 Moderator
 - [x] upload_slide(markdown, css)
   - [x] slide_id, slide_key が返される
 - [ ] edit_slide
-- [x] create_event(slide_id, datetime)
-  - [x] event_id, event_key が返される
+- [x] create_talk(slide_id, datetime)
+  - [x] talk_id, talk_key が返される
