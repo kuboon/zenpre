@@ -1,8 +1,8 @@
 {
   "tasks": {
     "bundle": "deno task --cwd ../bundler build",
-    "dev": "deno task bundle && deno serve -P --watch ./router.ts",
-    "serve": "deno serve -P ./router.ts"
+    "dev": "deno task bundle && deno serve -P --watch ./main.ts",
+    "serve": "deno serve -P ./main.ts"
   },
   "compilerOptions": {
     "lib": ["deno.ns", "deno.unstable", "dom"],
@@ -11,6 +11,8 @@
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.19",
+    "@kuboon/kv": "jsr:@kuboon/kv@^0.2.0",
+    "arktype": "npm:arktype@^2.2.0",
     "@remix-run/ui": "npm:@remix-run/ui@^0.4.0",
     "@remix-run/fetch-router": "npm:@remix-run/fetch-router@0.20.1",
     "@remix-run/response": "npm:@remix-run/response@0.3.7",
@@ -18,9 +20,10 @@
   },
   "permissions": {
     "default": {
-      "env": [],
+      "env": true,
       "net": ["localhost", "127.0.0.1", "0.0.0.0"],
-      "read": ["../bundled"]
+      "read": true,
+      "write": true
     }
   }
 }

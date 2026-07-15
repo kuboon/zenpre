@@ -10,8 +10,8 @@
 Deno workspace:
 
 - [`packages/zenpre/`](./packages/zenpre/) — JSR
-  [`@kuboon/zenpre`](https://jsr.io/@kuboon/zenpre)。schemas / keys (今後 render
-  / components / relay_client を追加)
+  [`@kuboon/zenpre`](https://jsr.io/@kuboon/zenpre)。schemas / keys / render (md
+  → multipage HTML)/ `<zen-slide-viewer>`(今後 relay_client / recorder を追加)
 - [`server/`](./server/) — zenpre.deno.dev 本体(Remix v3 fetch-router)
 - [`client/`](./client/) — 本体サイトの hydration エントリ
 - [`bundler/`](./bundler/) — `Deno.bundle` + Tailwind v4 + daisyUI → `bundled/`

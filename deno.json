@@ -16,7 +16,9 @@
     "default": {}
   },
   "test": {
-    "permissions": "default"
+    "permissions": {
+      "env": true
+    }
   },
   "imports": {
     "daisyui": "npm:daisyui@^5.5.19",
