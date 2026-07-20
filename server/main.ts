@@ -1,7 +1,17 @@
 /**
- * Deno Deploy 用エントリポイント。ローカルは `deno serve -P ./router.ts`
- * でも起動できる(router が fetch handler を default export している)。
+ * Deno Deploy / ローカル用エントリポイント(`deno serve -P ./main.ts`)。
+ *
+ * 本番の永続化は Deno KV。`./repo/deno_kv.ts` は import 時に `Deno.openKv()`
+ * を呼ぶため、ここでのみ読み込む。
  */
-import router from "./router.ts";
+import { makeRouter } from "./router.ts";
+import { Slides } from "./repo/slides.ts";
+import { denoKvFactory } from "./repo/deno_kv.ts";
 
-Deno.serve((req) => router.fetch(req));
+const router = makeRouter(new Slides(denoKvFactory));
+
+export default {
+  fetch(req: Request): Response | Promise<Response> {
+    return router.fetch(req);
+  },
+};
