@@ -13,20 +13,22 @@ function app() {
   });
 }
 
-Deno.test("GET / is the auto-playing intro deck (dogfooding)", async () => {
+Deno.test("GET / is the Player-driven intro deck (dogfooding)", async () => {
   const res = await app().fetch(new Request("http://x/"));
   assertEquals(res.status, 200);
   assertStringIncludes(res.headers.get("content-type") ?? "", "text/html");
   const html = await res.text();
   assertStringIncludes(html, "<zen-slide-viewer");
-  // autoplay is enabled on the home deck
-  assertStringIncludes(html, "autoplay");
-  assertStringIncludes(html, "data-autoplay-ms=");
+  // driven by an embedded fixed timeline via the Player (not the autoplay timer)
+  assertStringIncludes(html, 'id="zen-timeline-data"');
+  assertStringIncludes(html, '"type":"reaction"');
+  assertStringIncludes(html, "<zen-reaction-layer>");
+  assertStringIncludes(html, "/home.js");
+  assert(!html.includes("data-autoplay-ms="));
   // rendered from ZenPre's own features: multiple SSR pages
   assertStringIncludes(html, 'class="zen-page" data-page="1"');
   assertStringIncludes(html, 'class="zen-page" data-page="2"');
   assertStringIncludes(html, "ZenPre");
-  assertStringIncludes(html, "/slide.js");
 });
 
 Deno.test("POST /api/slides creates and returns id + key", async () => {
