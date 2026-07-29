@@ -13,3 +13,5 @@ export * from "./schemas.ts";
 export * from "./keys.ts";
 export * from "./render.ts";
 export * from "./relay_client.ts";
+export * from "./recorder.ts";
+export * from "./player.ts";

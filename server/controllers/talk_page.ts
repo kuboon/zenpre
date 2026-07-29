@@ -74,3 +74,18 @@ export function talkPresentAction(talks: Talks, slides: Slides) {
     },
   } satisfies Action<typeof routes.talkPresent>;
 }
+
+export function talkReplayAction(talks: Talks, slides: Slides) {
+  return {
+    handler(context) {
+      // 再生ページ。relay には繋がず、timeline を fetch して自動操作する。
+      return renderTalk(
+        talks,
+        slides,
+        context.params.talk_id,
+        "audience",
+        "/replay.js",
+      );
+    },
+  } satisfies Action<typeof routes.talkReplay>;
+}

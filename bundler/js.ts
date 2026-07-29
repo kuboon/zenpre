@@ -10,6 +10,7 @@ const CLIENT_ENTRIES = [
   "slide.ts",
   "talk.ts",
   "present.ts",
+  "replay.ts",
 ] as const;
 
 export async function buildJs(
