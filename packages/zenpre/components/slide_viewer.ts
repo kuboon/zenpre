@@ -63,7 +63,8 @@ export class ZenSlideViewer extends HTMLElement {
       const section = document.createElement("section");
       section.className = "zen-page";
       section.dataset.page = String(i + 1);
-      section.innerHTML = html;
+      section.innerHTML =
+        `<div class="zen-content prose prose-sm">${html}</div>`;
       track.appendChild(section);
     });
     this.replaceChildren(track);

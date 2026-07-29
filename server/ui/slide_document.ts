@@ -41,7 +41,9 @@ export async function renderSlideDocument(
   const rendered = await renderSlides(input.markdown, {});
   const pagesHtml = rendered.pages
     .map((html, i) =>
-      `<section class="zen-page" data-page="${i + 1}">${html}</section>`
+      `<section class="zen-page" data-page="${
+        i + 1
+      }"><div class="zen-content prose prose-sm">${html}</div></section>`
     )
     .join("");
 
@@ -66,7 +68,14 @@ export async function renderSlideDocument(
 <style>${sanitizeCss(input.css ?? "")}</style>
 </head>
 <body>
+<div class="zen-stage">
+<div class="mockup-phone">
+<div class="mockup-phone-camera"></div>
+<div class="mockup-phone-display">
 <zen-slide-viewer${autoplayAttr}><div class="zen-track">${pagesHtml}</div></zen-slide-viewer>
+</div>
+</div>
+</div>
 <script type="application/json" id="zen-slide-data">${data}</script>
 <script type="module" src="/slide.js"></script>
 </body>

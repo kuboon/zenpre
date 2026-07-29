@@ -33,10 +33,10 @@ _（このページ自体が ZenPre で作った自動再生スライドです�
 ## コードは自動ハイライト
 
 \`\`\`ts
-import { renderSlides } from "@kuboon/zenpre/render.ts";
+import { renderSlides } from "@kuboon/zenpre";
 
-const { title, pages } = await renderSlides(markdown);
-console.log(title, pages.length);
+const slide = await renderSlides(md);
+slide.pages; // ページごとの HTML
 \`\`\`
 
 shiki が markdown のコードブロックをそのまま色付けします。
