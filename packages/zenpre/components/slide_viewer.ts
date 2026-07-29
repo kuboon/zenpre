@@ -9,6 +9,7 @@
  *    DOM を組み立てる(SSR children が無い場合の self-host 用)。
  *
  * ページ遷移は横方向 scroll-snap(CSS)。左右キー/画面端タップでも移動する。
+ * `autoplay`(属性 or `load({ autoplayMs })`)で自動再生し、ユーザー操作で停止。
  * `apply(action)` は focus/reaction を反映する(reaction は M2 で拡張)。
  *
  * @module
@@ -21,26 +22,40 @@ export type SlideData = {
   pages: string[];
   /** daisyUI theme 名(あれば `data-theme` に反映)。 */
   theme?: string;
+  /** 自動再生する場合の 1 ページあたりの表示時間(ms)。 */
+  autoplayMs?: number;
 };
 
 export class ZenSlideViewer extends HTMLElement {
   #track: HTMLElement | null = null;
   #follow = true;
+  #autoplayMs = 0;
+  #autoTimer: number | undefined;
 
   connectedCallback(): void {
     // 既に SSR された track があればそれを使う。無ければ埋め込みデータから構築。
     this.#track = this.querySelector<HTMLElement>(".zen-track");
+    const attrMs = Number(this.dataset.autoplayMs ?? "");
+    if (attrMs > 0) this.#autoplayMs = attrMs;
     if (!this.#track) {
       const data = this.#readEmbeddedData();
       if (data) this.load(data);
     }
     this.#wire();
+    this.#startAutoplayIfNeeded();
+  }
+
+  disconnectedCallback(): void {
+    this.#stopAutoplay();
   }
 
   /** 描画済みページから DOM を構築する。 */
   load(data: SlideData): void {
     if (data.theme) {
       document.documentElement.setAttribute("data-theme", data.theme);
+    }
+    if (data.autoplayMs && data.autoplayMs > 0) {
+      this.#autoplayMs = data.autoplayMs;
     }
     const track = document.createElement("div");
     track.className = "zen-track";
@@ -54,6 +69,7 @@ export class ZenSlideViewer extends HTMLElement {
     this.replaceChildren(track);
     this.#track = track;
     this.#wire();
+    this.#startAutoplayIfNeeded();
   }
 
   /** relay/timeline からの action を反映する。 */
@@ -97,9 +113,35 @@ export class ZenSlideViewer extends HTMLElement {
   }
 
   #go(delta: number): void {
+    this.#stopAutoplay(); // ユーザー操作で自動再生を止める
     const next = this.currentPage + delta;
     this.#follow = false;
     this.focusOn(next);
+  }
+
+  // ---- autoplay ---------------------------------------------------------
+
+  #startAutoplayIfNeeded(): void {
+    this.#stopAutoplay();
+    if (this.#autoplayMs > 0 && this.#pages().length > 1) {
+      this.#autoTimer = globalThis.setInterval(
+        () => this.#autoAdvance(),
+        this.#autoplayMs,
+      );
+    }
+  }
+
+  #autoAdvance(): void {
+    const n = this.#pages().length;
+    const next = this.currentPage >= n ? 1 : this.currentPage + 1;
+    this.focusOn(next); // #stopAutoplay を呼ばずにスクロールのみ
+  }
+
+  #stopAutoplay(): void {
+    if (this.#autoTimer !== undefined) {
+      globalThis.clearInterval(this.#autoTimer);
+      this.#autoTimer = undefined;
+    }
   }
 
   #wire(): void {
@@ -120,6 +162,12 @@ export class ZenSlideViewer extends HTMLElement {
       if (x < w * 0.12) this.#go(-1);
       else if (x > w * 0.88) this.#go(1);
     });
+
+    // 明示的なユーザー入力(スワイプ/ホイール)でも自動再生を止める。
+    const stop = () => this.#stopAutoplay();
+    this.addEventListener("wheel", stop, { passive: true });
+    this.addEventListener("touchstart", stop, { passive: true });
+    this.addEventListener("pointerdown", stop, { passive: true });
 
     // ユーザーが自分でページを変えたら follow を一時解除(M2 で「追従に戻る」UI)。
     this.#track.addEventListener("scroll", () => {
