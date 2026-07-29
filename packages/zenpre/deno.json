@@ -7,7 +7,9 @@
     "./schemas.ts": "./schemas.ts",
     "./keys.ts": "./keys.ts",
     "./render.ts": "./render.ts",
-    "./components/slide_viewer.ts": "./components/slide_viewer.ts"
+    "./relay_client.ts": "./relay_client.ts",
+    "./components/slide_viewer.ts": "./components/slide_viewer.ts",
+    "./components/reaction_layer.ts": "./components/reaction_layer.ts"
   },
   "compilerOptions": {
     "lib": ["deno.ns", "dom", "dom.iterable", "esnext"]

@@ -31,6 +31,10 @@ export type SlideDocInput = {
   theme?: string;
   /** 自動再生する場合の 1 ページあたりの表示時間(ms)。省略で自動再生なし。 */
   autoplayMs?: number;
+  /** 読み込むクライアントスクリプト(default: "/slide.js")。 */
+  clientScript?: string;
+  /** Talk(relay)にひも付ける場合の設定。 */
+  talk?: { talk_id: string; role: "audience" | "presenter" };
 };
 
 /** スライド表示用の完全な HTML ドキュメントを返す。 */
@@ -58,6 +62,16 @@ export async function renderSlideDocument(
     ? ` autoplay data-autoplay-ms="${input.autoplayMs}"`
     : "";
 
+  const clientScript = input.clientScript ?? "/slide.js";
+  const talkScript = input.talk
+    ? `\n<script type="application/json" id="zen-talk-data">${
+      JSON.stringify(input.talk).replace(/</g, "\\u003c")
+    }</script>`
+    : "";
+  const reactionLayer = input.talk
+    ? "\n<zen-reaction-layer></zen-reaction-layer>"
+    : "";
+
   return `<!doctype html>
 <html lang="ja" data-theme="${escapeHtml(theme)}">
 <head>
@@ -72,12 +86,12 @@ export async function renderSlideDocument(
 <div class="mockup-phone">
 <div class="mockup-phone-camera"></div>
 <div class="mockup-phone-display">
-<zen-slide-viewer${autoplayAttr}><div class="zen-track">${pagesHtml}</div></zen-slide-viewer>
+<zen-slide-viewer${autoplayAttr}><div class="zen-track">${pagesHtml}</div></zen-slide-viewer>${reactionLayer}
 </div>
 </div>
 </div>
-<script type="application/json" id="zen-slide-data">${data}</script>
-<script type="module" src="/slide.js"></script>
+<script type="application/json" id="zen-slide-data">${data}</script>${talkScript}
+<script type="module" src="${clientScript}"></script>
 </body>
 </html>`;
 }

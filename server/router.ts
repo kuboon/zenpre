@@ -2,10 +2,8 @@
  * ZenPre server — Remix v3 (fetch-router) on Deno.
  *
  * ルート定義は `./routes.ts`、各ページ/API のコントローラは `./controllers/`。
- * ここは middleware の設定とルート→コントローラの結線のみを行う。
- *
- * 永続化バックエンドは {@link Slides} 経由で注入する({@link makeRouter} の
- * 引数)。本番は Deno KV(main.ts)、テストは memory を渡す。
+ * ここは HTTP ルートの結線のみ。WebSocket(relay)は router の外(`./app.ts`)で
+ * アップグレードする。永続化は {@link Slides}/{@link Talks} 経由で注入する。
  */
 
 import { createRouter, type Router } from "@remix-run/fetch-router";
@@ -18,11 +16,17 @@ import {
   slidesCreateAction,
   slideUpdateAction,
 } from "./controllers/api/slides.ts";
+import { talkPageAction, talkPresentAction } from "./controllers/talk_page.ts";
+import { talkGetAction, talksCreateAction } from "./controllers/api/talks.ts";
 import type { Slides } from "./repo/slides.ts";
+import type { Talks } from "./repo/talks.ts";
 import { routes } from "./routes.ts";
 
-/** Slides サービスを注入して router を組み立てる。 */
-export function makeRouter(slides: Slides): Router {
+export type RouterDeps = { slides: Slides; talks: Talks };
+
+/** Slides/Talks を注入して HTTP router を組み立てる。 */
+export function makeRouter(deps: RouterDeps): Router {
+  const { slides, talks } = deps;
   const router = createRouter({
     middleware: [
       staticFiles(new URL("../bundled", import.meta.url).pathname),
@@ -31,9 +35,14 @@ export function makeRouter(slides: Slides): Router {
 
   router.get(routes.home, homeAction);
   router.get(routes.slidePage, slidePageAction(slides));
+  router.get(routes.talkPage, talkPageAction(talks, slides));
+  router.get(routes.talkPresent, talkPresentAction(talks, slides));
+
   router.post(routes.api.slidesCreate, slidesCreateAction(slides));
   router.get(routes.api.slideGet, slideGetAction(slides));
   router.patch(routes.api.slideUpdate, slideUpdateAction(slides));
+  router.post(routes.api.talksCreate, talksCreateAction(talks, slides));
+  router.get(routes.api.talkGet, talkGetAction(talks));
 
   return router;
 }

@@ -8,6 +8,8 @@
 const CLIENT_ENTRIES = [
   "mod.ts",
   "slide.ts",
+  "talk.ts",
+  "present.ts",
 ] as const;
 
 export async function buildJs(
