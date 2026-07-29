@@ -17,7 +17,8 @@
   },
   "test": {
     "permissions": {
-      "env": true
+      "env": true,
+      "net": ["localhost", "127.0.0.1", "0.0.0.0"]
     }
   },
   "imports": {

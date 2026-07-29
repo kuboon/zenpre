@@ -1,10 +1,14 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import { makeRouter } from "./router.ts";
 import { Slides } from "./repo/slides.ts";
+import { Talks } from "./repo/talks.ts";
 import { memoryFactory } from "./repo/memory.ts";
 
 function app() {
-  return makeRouter(new Slides(memoryFactory));
+  return makeRouter({
+    slides: new Slides(memoryFactory),
+    talks: new Talks(memoryFactory),
+  });
 }
 
 Deno.test("GET / is the auto-playing intro deck (dogfooding)", async () => {
@@ -161,4 +165,104 @@ Deno.test("GET /s/:id server-renders the slide pages", async () => {
 Deno.test("GET /s/:id 404 for unknown slide", async () => {
   const res = await app().fetch(new Request("http://x/s/nope0000"));
   assertEquals(res.status, 404);
+});
+
+Deno.test("POST /api/talks requires X-Slide-Key when slide_id given", async () => {
+  const router = app();
+  const slide = await (await router.fetch(
+    new Request("http://x/api/slides", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ markdown: "# A" }),
+    }),
+  )).json() as { slide_id: string; slide_key: string };
+
+  // missing key -> 401
+  const noKey = await router.fetch(
+    new Request("http://x/api/talks", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ slide_id: slide.slide_id }),
+    }),
+  );
+  assertEquals(noKey.status, 401);
+
+  // with key -> 201 and returns keys + urls
+  const ok = await router.fetch(
+    new Request("http://x/api/talks", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-slide-key": slide.slide_key,
+      },
+      body: JSON.stringify({ slide_id: slide.slide_id }),
+    }),
+  );
+  assertEquals(ok.status, 201);
+  const body = await ok.json() as {
+    talk_id: string;
+    event_key: string;
+    moderator_key: string;
+    audience_url: string;
+    presenter_url: string;
+  };
+  assertEquals(body.talk_id.length, 8);
+  assertEquals(body.event_key.length, 26);
+  assertEquals(body.audience_url, `/t/${body.talk_id}`);
+  assert(body.presenter_url.includes(`#key=${body.event_key}`));
+});
+
+Deno.test("POST /api/talks allows relay-only talk (no slide_id)", async () => {
+  const res = await app().fetch(
+    new Request("http://x/api/talks", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    }),
+  );
+  assertEquals(res.status, 201);
+  const body = await res.json() as { talk_id: string };
+  assertEquals(body.talk_id.length, 8);
+});
+
+Deno.test("GET /t/:id 404 when talk has no slide bound", async () => {
+  const router = app();
+  const talk = await (await router.fetch(
+    new Request("http://x/api/talks", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    }),
+  )).json() as { talk_id: string };
+  const res = await router.fetch(new Request(`http://x/t/${talk.talk_id}`));
+  assertEquals(res.status, 404);
+});
+
+Deno.test("GET /t/:id renders audience view with talk data + /talk.js", async () => {
+  const router = app();
+  const slide = await (await router.fetch(
+    new Request("http://x/api/slides", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ markdown: "# Live\n\nhi" }),
+    }),
+  )).json() as { slide_id: string; slide_key: string };
+  const talk = await (await router.fetch(
+    new Request("http://x/api/talks", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-slide-key": slide.slide_key,
+      },
+      body: JSON.stringify({ slide_id: slide.slide_id }),
+    }),
+  )).json() as { talk_id: string };
+
+  const res = await router.fetch(new Request(`http://x/t/${talk.talk_id}`));
+  assertEquals(res.status, 200);
+  const html = await res.text();
+  assertStringIncludes(html, "zen-talk-data");
+  assertStringIncludes(html, '"role":"audience"');
+  assertStringIncludes(html, "/talk.js");
+  assertStringIncludes(html, "<zen-reaction-layer>");
 });

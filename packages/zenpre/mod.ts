@@ -2,12 +2,14 @@
  * `@kuboon/zenpre` — markdown をそのままプレゼンにする ZenPre の
  * フロントエンド/共有ライブラリ。
  *
- * 現在は主要データ構造(schemas)と ID/key ユーティリティ(keys)を提供する。
- * render / components / relay_client は今後のマイルストーンで追加される
- * (詳細は repo の IMPLEMENTATION.md を参照)。
+ * 主要データ構造(schemas)・ID/key(keys)・md→HTML(render)・
+ * relay クライアント(relay_client)を提供する。Web Component は
+ * `./components/*` を副作用 import する(DOM が必要なので mod からは
+ * 再 export しない)。
  *
  * @module
  */
 export * from "./schemas.ts";
 export * from "./keys.ts";
 export * from "./render.ts";
+export * from "./relay_client.ts";

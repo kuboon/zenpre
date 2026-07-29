@@ -140,3 +140,43 @@ zen-slide-viewer .zen-focus {
     outline-offset: 4px;
   }
 }
+
+/* ---- ReactionLayer (<zen-reaction-layer>) ----------------------------- */
+
+@keyframes zen-reaction-float {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-70dvh) scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* audience が押すリアクションバー(client 側で生成) */
+.zen-reaction-bar {
+  position: fixed;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 9999px;
+  background-color: color-mix(in oklch, var(--color-base-100) 85%, transparent);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  z-index: 60;
+}
+
+.zen-reaction-bar button {
+  font-size: 1.4rem;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
