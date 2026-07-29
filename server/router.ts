@@ -11,7 +11,7 @@
 import { createRouter, type Router } from "@remix-run/fetch-router";
 import { staticFiles } from "@remix-run/static-middleware";
 
-import { homeAction } from "./controllers/home.tsx";
+import { homeAction } from "./controllers/home.ts";
 import { slidePageAction } from "./controllers/slide_page.ts";
 import {
   slideGetAction,

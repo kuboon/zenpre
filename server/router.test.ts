@@ -7,26 +7,20 @@ function app() {
   return makeRouter(new Slides(memoryFactory));
 }
 
-const FRAME_HEADERS = { "rmx-frame": "1", accept: "text/html" };
-
-Deno.test("GET / returns shell HTML with frame-target nav", async () => {
+Deno.test("GET / is the auto-playing intro deck (dogfooding)", async () => {
   const res = await app().fetch(new Request("http://x/"));
   assertEquals(res.status, 200);
   assertStringIncludes(res.headers.get("content-type") ?? "", "text/html");
   const html = await res.text();
-  assertStringIncludes(html, "<!DOCTYPE html>");
-  assertStringIncludes(html, 'rmx-target="content"');
+  assertStringIncludes(html, "<zen-slide-viewer");
+  // autoplay is enabled on the home deck
+  assertStringIncludes(html, "autoplay");
+  assertStringIncludes(html, "data-autoplay-ms=");
+  // rendered from ZenPre's own features: multiple SSR pages
+  assertStringIncludes(html, 'class="zen-page" data-page="1"');
+  assertStringIncludes(html, 'class="zen-page" data-page="2"');
   assertStringIncludes(html, "ZenPre");
-});
-
-Deno.test("GET / with rmx-frame returns landing fragment", async () => {
-  const res = await app().fetch(
-    new Request("http://x/", { headers: FRAME_HEADERS }),
-  );
-  assertEquals(res.status, 200);
-  const html = await res.text();
-  assert(html.trimStart().startsWith("<main"), `got: ${html.slice(0, 80)}`);
-  assert(!html.includes("<!DOCTYPE html>"));
+  assertStringIncludes(html, "/slide.js");
 });
 
 Deno.test("POST /api/slides creates and returns id + key", async () => {
