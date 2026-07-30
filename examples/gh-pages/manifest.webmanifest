@@ -1,0 +1,19 @@
+{
+  "name": "ZenPre セルフホストデモ",
+  "short_name": "ZenPre",
+  "description": "markdown をそのままプレゼンにする ZenPre のセルフホスト例",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a103c",
+  "theme_color": "#1a103c",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

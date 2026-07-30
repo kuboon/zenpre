@@ -2,28 +2,66 @@
  * `<zen-slide-viewer>` — スワイプ/キーボードでめくる縦長フルスクリーンの
  * スライドビューア(フレームワーク非依存の Web Component、light DOM)。
  *
- * 使い方は 2 通り:
+ * 使い方は 3 通り:
  * 1. **SSR + enhancement**: サーバが `.zen-track > .zen-page` を light DOM に
  *    出力しておき、connectedCallback がそれを拾ってナビゲーションを付与する。
- * 2. **クライアント構築**: `viewer.load({ pages })` で描画済みページ HTML から
- *    DOM を組み立てる(SSR children が無い場合の self-host 用)。
+ * 2. **クライアント構築(描画済み)**: `viewer.load({ pages })` で描画済みページ
+ *    HTML から DOM を組み立てる。
+ * 3. **クライアント構築(markdown)**: `viewer.load({ markdown, css?, theme? })`。
+ *    内部で `renderSlides()` を動的 import して描画する(セルフホスト用)。
  *
  * ページ遷移は横方向 scroll-snap(CSS)。左右キー/画面端タップでも移動する。
  * `autoplay`(属性 or `load({ autoplayMs })`)で自動再生し、ユーザー操作で停止。
- * `apply(action)` は focus/reaction を反映する(reaction は M2 で拡張)。
+ * `apply(action)` は focus を反映する。`connect()` で relay に接続すると
+ * presenter の focus 追従・reaction 表示・post 集計まで面倒を見る(セルフホスト用)。
  *
  * @module
  */
 import type { Action } from "../schemas.ts";
 
-/** `viewer.load()` に渡す描画済みスライド。 */
+/** `viewer.load()` に渡すスライド(`pages` 描画済み or `markdown` 生)。 */
 export type SlideData = {
-  /** ページごとの HTML(`renderSlides` の結果)。 */
-  pages: string[];
+  /** ページごとの HTML(`renderSlides` の結果)。`markdown` と排他。 */
+  pages?: string[];
+  /** 生 markdown。渡すと `renderSlides()` で描画する(`pages` があればそちら優先)。 */
+  markdown?: string;
+  /** 追加 CSS(markdown 経路で `<style>` として差し込む)。 */
+  css?: string;
   /** daisyUI theme 名(あれば `data-theme` に反映)。 */
   theme?: string;
   /** 自動再生する場合の 1 ページあたりの表示時間(ms)。 */
   autoplayMs?: number;
+};
+
+/** {@link ZenSlideViewer.connect} のオプション。 */
+export type TalkConnectOptions = {
+  /** talk_id。 */
+  talkId: string;
+  /** 接続先 relay の origin(default: 同一 origin。セルフホストは zenpre.deno.dev 等)。 */
+  server?: string;
+  /** presenter/moderator の capability key(audience は省略)。 */
+  key?: string;
+};
+
+/** {@link ZenSlideViewer.connect} が返すハンドル。 */
+export type TalkConnection = {
+  sendReaction(emoji: string): void;
+  sendPost(text: string): void;
+  sendVote(postId: string): void;
+  disconnect(): void;
+};
+
+/** connect() が関知する近傍コンポーネント(あれば連携する)。 */
+type ReactionLayerEl = HTMLElement & { emit(emoji: string): void };
+type PostViewerEl = HTMLElement & {
+  myId: string;
+  applyPost(p: { post_id: string; text: string; level: number }): void;
+  applyVote(postId: string, from: string): void;
+};
+type RelayLike = {
+  connect(): void;
+  send(action: Action): void;
+  close(): void;
 };
 
 export class ZenSlideViewer extends HTMLElement {
@@ -49,17 +87,34 @@ export class ZenSlideViewer extends HTMLElement {
     this.#stopAutoplay();
   }
 
-  /** 描画済みページから DOM を構築する。 */
-  load(data: SlideData): void {
+  /**
+   * スライドを構築する。`pages`(描画済み)があればそれを、無ければ `markdown` を
+   * `renderSlides()`(動的 import)で描画して使う。markdown 経路は非同期。
+   */
+  load(data: SlideData): void | Promise<void> {
     if (data.theme) {
       document.documentElement.setAttribute("data-theme", data.theme);
     }
     if (data.autoplayMs && data.autoplayMs > 0) {
       this.#autoplayMs = data.autoplayMs;
     }
+    if (data.pages) {
+      this.#build(data.pages, data.css);
+      return;
+    }
+    if (data.markdown !== undefined) {
+      // renderSlides は unified/shiki/mermaid を伴うので必要時だけ動的 import。
+      return import("../render.ts").then(({ renderSlides }) =>
+        renderSlides(data.markdown as string, { theme: data.theme })
+      ).then((r) => this.#build(r.pages, data.css));
+    }
+  }
+
+  /** 描画済みページ HTML から track を組み立てる。 */
+  #build(pages: string[], css?: string): void {
     const track = document.createElement("div");
     track.className = "zen-track";
-    data.pages.forEach((html, i) => {
+    pages.forEach((html, i) => {
       const section = document.createElement("section");
       section.className = "zen-page";
       section.dataset.page = String(i + 1);
@@ -68,9 +123,70 @@ export class ZenSlideViewer extends HTMLElement {
       track.appendChild(section);
     });
     this.replaceChildren(track);
+    if (css) {
+      const style = document.createElement("style");
+      style.textContent = css;
+      this.prepend(style);
+    }
     this.#track = track;
+    this.dataset.wired = "";
     this.#wire();
     this.#startAutoplayIfNeeded();
+  }
+
+  /**
+   * relay に接続して presenter の focus に追従する(セルフホスト向け)。
+   * ページ内に `<zen-reaction-layer>` / `<zen-post-viewer>` があれば、
+   * reaction 表示・post 集計・投稿フォームの送信も自動で結線する。
+   * RelayClient は必要時だけ動的 import する。
+   */
+  connect(opts: TalkConnectOptions): TalkConnection {
+    const layer = document.querySelector<ReactionLayerEl>("zen-reaction-layer");
+    const postViewer = document.querySelector<PostViewerEl>("zen-post-viewer");
+    let relay: RelayLike | null = null;
+
+    const send = (action: Action) => relay?.send(action);
+
+    // post viewer の投稿/投票フォームを送信に結線。
+    postViewer?.addEventListener("zen-post", (e) => {
+      const { text } = (e as CustomEvent<{ text: string }>).detail;
+      send({ type: "post", text, level: 0 });
+    });
+    postViewer?.addEventListener("zen-vote", (e) => {
+      const { post_id } = (e as CustomEvent<{ post_id: string }>).detail;
+      send({ type: "vote", post_id });
+    });
+
+    import("../relay_client.ts").then(({ RelayClient }) => {
+      relay = new RelayClient({
+        talkId: opts.talkId,
+        server: opts.server,
+        key: opts.key,
+        handlers: {
+          onWelcome: (w) => {
+            if (postViewer) postViewer.myId = w.audience_id;
+            if (w.last_focus) this.apply(w.last_focus);
+          },
+          onAction: ({ action, from }) => {
+            if (action.type === "focus") this.apply(action);
+            else if (action.type === "reaction") layer?.emit(action.emoji);
+            else if (action.type === "post") {
+              if ("post_id" in action) postViewer?.applyPost(action);
+            } else if (action.type === "vote") {
+              postViewer?.applyVote(action.post_id, from);
+            }
+          },
+        },
+      });
+      relay.connect();
+    });
+
+    return {
+      sendReaction: (emoji) => send({ type: "reaction", emoji }),
+      sendPost: (text) => send({ type: "post", text, level: 0 }),
+      sendVote: (postId) => send({ type: "vote", post_id: postId }),
+      disconnect: () => relay?.close(),
+    };
   }
 
   /** relay/timeline からの action を反映する。 */

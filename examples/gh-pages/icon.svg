@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1a103c" />
+  <rect x="150" y="96" width="212" height="320" rx="28" fill="#2d1b69" stroke="#f637ec" stroke-width="8" />
+  <circle cx="256" cy="132" r="8" fill="#f637ec" />
+  <text x="256" y="300" font-family="sans-serif" font-size="150" font-weight="700" fill="#f637ec" text-anchor="middle">Z</text>
+</svg>
