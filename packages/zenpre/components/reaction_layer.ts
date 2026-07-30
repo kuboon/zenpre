@@ -8,6 +8,8 @@
  * @module
  */
 const MAX_ACTIVE = 30;
+/** 上昇にかける時間(全リアクション共通・一定)。 */
+const RISE_MS = 3000;
 
 export class ZenReactionLayer extends HTMLElement {
   #active = 0;
@@ -30,18 +32,33 @@ export class ZenReactionLayer extends HTMLElement {
   emit(emoji: string): void {
     if (this.#active >= MAX_ACTIVE) return;
     this.#active++;
-    const el = document.createElement("span");
-    el.textContent = emoji;
     const x = 5 + Math.floor(this.#rand() * 90); // 5%〜95%
-    el.style.cssText =
-      `position:absolute;left:${x}%;bottom:-2rem;font-size:2rem;will-change:transform,opacity;` +
-      `animation:zen-reaction-float 2.4s ease-out forwards`;
-    this.appendChild(el);
+
+    // 縦(上昇)と横(揺れ)を別要素に分けて独立させる:
+    // - 外側 = 一定速度でまっすぐ上昇(全リアクション共通)。
+    // - 内側 = 左右の揺れ。振れ幅と周期・位相だけを個体差でばらす。
+    const rise = document.createElement("span");
+    rise.style.cssText =
+      `position:absolute;left:${x}%;bottom:-2rem;will-change:transform,opacity;` +
+      `animation:zen-reaction-rise ${RISE_MS}ms linear forwards`;
+
+    const amp = 16 + Math.floor(this.#rand() * 24); // 16〜40px(横の振れ幅)
+    const period = 0.9 + this.#rand() * 0.8; // 0.9〜1.7s(片道)
+    const phase = -(this.#rand() * period * 2); // 位相をずらして同期させない
+    const inner = document.createElement("span");
+    inner.textContent = emoji;
+    inner.style.cssText = `display:block;font-size:2rem;--zen-amp:${amp}px;` +
+      `animation:zen-reaction-sway ${period.toFixed(2)}s ${
+        phase.toFixed(2)
+      }s ease-in-out infinite alternate`;
+
+    rise.appendChild(inner);
+    this.appendChild(rise);
     this.#beep(emoji);
     globalThis.setTimeout(() => {
-      el.remove();
+      rise.remove();
       this.#active--;
-    }, 2400);
+    }, RISE_MS);
   }
 
   #rand(): number {
