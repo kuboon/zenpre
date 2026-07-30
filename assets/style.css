@@ -143,29 +143,31 @@ zen-slide-viewer .zen-focus {
 
 /* ---- ReactionLayer (<zen-reaction-layer>) ----------------------------- */
 
-@keyframes zen-reaction-float {
+/* 外側: 一定速度でまっすぐ上昇(全リアクション共通)。 */
+@keyframes zen-reaction-rise {
   0% {
-    transform: translate(0, 0) rotate(0deg) scale(0.8);
+    transform: translateY(0);
     opacity: 0;
   }
-  12% {
+  10% {
     opacity: 1;
   }
-  25% {
-    transform: translate(var(--zen-sway, 20px), -18dvh)
-      rotate(var(--zen-rot, 8deg)) scale(1.1);
-  }
-  50% {
-    transform: translate(calc(var(--zen-sway, 20px) * -1), -38dvh)
-      rotate(calc(var(--zen-rot, 8deg) * -1)) scale(1.12);
-  }
-  75% {
-    transform: translate(var(--zen-sway, 20px), -56dvh)
-      rotate(var(--zen-rot, 8deg)) scale(1.16);
+  90% {
+    opacity: 1;
   }
   100% {
-    transform: translate(0, -72dvh) rotate(0deg) scale(1.2);
+    transform: translateY(-75dvh);
     opacity: 0;
+  }
+}
+
+/* 内側: 左右にゆらゆら(振り子)。振れ方向に少し傾く。 */
+@keyframes zen-reaction-sway {
+  from {
+    transform: translateX(calc(var(--zen-amp, 24px) * -1)) rotate(-6deg);
+  }
+  to {
+    transform: translateX(var(--zen-amp, 24px)) rotate(6deg);
   }
 }
 
