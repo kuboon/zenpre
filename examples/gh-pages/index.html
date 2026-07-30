@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>ZenPre — セルフホストデモ(客席)</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <!-- Tailwind+daisyUI のビルド済み CSS は relay 本体サイトから借りる。 -->
+    <link rel="stylesheet" href="https://zenpre.deno.dev/style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "@kuboon/zenpre/": "https://esm.sh/jsr/@kuboon/zenpre@0.1.0/",
+          "@kuboon/browser-how-to/": "https://esm.sh/jsr/@kuboon/browser-how-to@0.7.0/"
+        }
+      }
+    </script>
+    <script src="./config.js"></script>
+  </head>
+  <body>
+    <div class="zen-stage">
+      <div class="mockup-phone">
+        <div class="mockup-phone-camera"></div>
+        <div class="mockup-phone-display">
+          <zen-slide-viewer></zen-slide-viewer>
+          <zen-reaction-layer></zen-reaction-layer>
+        </div>
+      </div>
+    </div>
+    <zen-post-viewer data-role="audience"></zen-post-viewer>
+    <div class="zen-reaction-bar" id="bar"></div>
+    <button type="button" id="install" class="btn btn-sm zen-install">
+      ホーム画面に追加
+    </button>
+
+    <script type="module">
+      import { defineComponents } from "@kuboon/zenpre/components.ts";
+      defineComponents();
+
+      const { server, talkId, theme } = globalThis.ZENPRE;
+      const viewer = document.querySelector("zen-slide-viewer");
+      const md = await (await fetch("./slides.md")).text();
+      await viewer.load({ markdown: md, theme });
+
+      // relay に接続。focus 追従・reaction 表示・post 集計まで面倒を見る。
+      const talk = viewer.connect({ server, talkId });
+
+      // リアクションバー(絵文字ボタン)。
+      const bar = document.getElementById("bar");
+      for (const emoji of ["👏", "❤️", "🎉", "😂", "🤔"]) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = emoji;
+        b.addEventListener("click", () => talk.sendReaction(emoji));
+        bar.appendChild(b);
+      }
+
+      // PWA: ホーム画面に追加(端末に合わせた案内は browser-how-to に任せる)。
+      document.getElementById("install").addEventListener("click", async () => {
+        const { showA2hsGuide } = await import(
+          "@kuboon/browser-how-to/a2hs/ui"
+        );
+        showA2hsGuide();
+      });
+
+      // 任意: オフライン用の Service Worker(あれば登録)。
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      }
+    </script>
+  </body>
+</html>

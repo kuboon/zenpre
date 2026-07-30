@@ -37,7 +37,7 @@ export class ZenReactionLayer extends HTMLElement {
       `position:absolute;left:${x}%;bottom:-2rem;font-size:2rem;will-change:transform,opacity;` +
       `animation:zen-reaction-float 2.4s ease-out forwards`;
     this.appendChild(el);
-    this.#beep();
+    this.#beep(emoji);
     globalThis.setTimeout(() => {
       el.remove();
       this.#active--;
@@ -57,19 +57,39 @@ export class ZenReactionLayer extends HTMLElement {
     if (Ctor) this.#audio = new Ctor();
   }
 
-  #beep(): void {
+  #beep(emoji?: string): void {
     if (this.muted || !this.#audio) return;
     const ctx = this.#audio;
+    const { type, freq } = this.#tone(emoji);
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = 440 + Math.random() * 440;
+    osc.type = type;
+    osc.frequency.value = freq;
     gain.gain.setValueAtTime(0.0001, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
     osc.connect(gain).connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.26);
+  }
+
+  /** 絵文字ごとに音色/音程を変える(同じ絵文字は同じ音、未知はランダム)。 */
+  #tone(emoji?: string): { type: OscillatorType; freq: number } {
+    // ペンタトニック音階(C5〜)で耳当たりよく。
+    const scale = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
+    const table: Record<string, { type: OscillatorType; note: number }> = {
+      "👏": { type: "square", note: 0 },
+      "❤️": { type: "sine", note: 2 },
+      "🎉": { type: "triangle", note: 5 },
+      "😂": { type: "sawtooth", note: 3 },
+      "🤔": { type: "sine", note: 1 },
+    };
+    const hit = emoji ? table[emoji] : undefined;
+    if (hit) return { type: hit.type, freq: scale[hit.note] };
+    // 未知の絵文字はコードポイントから決めて「同じ絵文字は同じ音」に。
+    const cp = emoji ? (emoji.codePointAt(0) ?? 0) : 0;
+    const note = cp ? scale[cp % scale.length] : 440 + Math.random() * 440;
+    return { type: "sine", freq: note };
   }
 }
 

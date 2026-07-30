@@ -10,6 +10,7 @@
     "./relay_client.ts": "./relay_client.ts",
     "./recorder.ts": "./recorder.ts",
     "./player.ts": "./player.ts",
+    "./components.ts": "./components.ts",
     "./components/slide_viewer.ts": "./components/slide_viewer.ts",
     "./components/reaction_layer.ts": "./components/reaction_layer.ts",
     "./components/post_viewer.ts": "./components/post_viewer.ts",

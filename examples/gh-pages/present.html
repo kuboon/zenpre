@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>ZenPre — セルフホストデモ(発表者)</title>
+    <link rel="stylesheet" href="https://zenpre.deno.dev/style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "@kuboon/zenpre/": "https://esm.sh/jsr/@kuboon/zenpre@0.1.0/"
+        }
+      }
+    </script>
+    <script src="./config.js"></script>
+  </head>
+  <body>
+    <div class="zen-stage">
+      <div class="mockup-phone">
+        <div class="mockup-phone-camera"></div>
+        <div class="mockup-phone-display">
+          <zen-slide-viewer></zen-slide-viewer>
+          <zen-reaction-layer></zen-reaction-layer>
+        </div>
+      </div>
+    </div>
+    <zen-post-viewer data-role="presenter"></zen-post-viewer>
+    <zen-moderator-ui></zen-moderator-ui>
+
+    <script type="module">
+      import { defineComponents } from "@kuboon/zenpre/components.ts";
+      import { RelayClient } from "@kuboon/zenpre/relay_client.ts";
+      import { genPublicId } from "@kuboon/zenpre/keys.ts";
+      defineComponents();
+
+      const { server, talkId, theme } = globalThis.ZENPRE;
+
+      // presenter/moderator の key は URL fragment(#key=…)で受け取り、
+      // query に載せず localStorage に退避する(サーバログに残さない)。
+      const hashKey = new URLSearchParams(location.hash.slice(1)).get("key");
+      const store = `zen-talk-key:${talkId}`;
+      if (hashKey) {
+        try {
+          localStorage.setItem(store, hashKey);
+        } catch {}
+        history.replaceState(null, "", location.pathname);
+      }
+      const key = hashKey ?? localStorage.getItem(store) ?? undefined;
+
+      const viewer = document.querySelector("zen-slide-viewer");
+      const layer = document.querySelector("zen-reaction-layer");
+      const postViewer = document.querySelector("zen-post-viewer");
+      const moderatorUi = document.querySelector("zen-moderator-ui");
+      const md = await (await fetch("./slides.md")).text();
+      await viewer.load({ markdown: md, theme });
+
+      const relay = new RelayClient({
+        talkId,
+        server,
+        key,
+        handlers: {
+          onWelcome: (w) => (postViewer.myId = w.audience_id),
+          onAction: ({ action, from }) => {
+            if (action.type === "reaction") layer.emit(action.emoji);
+            else if (action.type === "post") {
+              if ("post_id" in action) postViewer.applyPost(action);
+              else moderatorUi.enqueue({ text: action.text, from });
+            } else if (action.type === "vote") {
+              postViewer.applyVote(action.post_id, from);
+            }
+            // focus は自分の操作なので viewer には適用しない。
+          },
+        },
+      });
+      relay.connect();
+
+      // ページ送りを focus として配信。
+      let lastPage = 0;
+      viewer.addEventListener("zen-navigate", (e) => {
+        const page = e.detail.page;
+        if (page !== lastPage) {
+          lastPage = page;
+          relay.send({ type: "focus", page, idx: 0 });
+        }
+      });
+
+      // 承認: level-1 post として post_id を採番して配信。
+      moderatorUi.addEventListener("zen-approve", (e) => {
+        relay.send({
+          type: "post",
+          text: e.detail.text,
+          level: 1,
+          post_id: genPublicId(),
+        });
+      });
+    </script>
+  </body>
+</html>

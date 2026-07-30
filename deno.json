@@ -28,6 +28,7 @@
   },
   "nodeModulesDir": "auto",
   "unstable": ["bundle", "kv"],
+  "exclude": ["examples/", "bundled/"],
   "compilerOptions": {
     "jsx": "react-jsx",
     "jsxImportSource": "@remix-run/ui"
