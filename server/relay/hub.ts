@@ -5,8 +5,10 @@
  * ソケットへは直接送り、他 isolate へは channel.postMessage で伝える
  * (BroadcastChannel は同じインスタンスには echo しないので二重配信しない)。
  *
- * M2 は全員向けの `stage` チャンネルのみ。level-0 post 専用の `mod`
- * チャンネルは M3 で追加する。
+ * チャンネルは 2 本:
+ * - `stage` … 全員向け(focus / reaction / vote / level≥1 の post / count)。
+ * - `mod`   … level-0 post 専用。presenter / moderator の接続だけが購読する。
+ *   これで「audience の post は moderator を通ってから全員へ」を実現する。
  */
 import type { Down } from "@kuboon/zenpre/schemas.ts";
 
@@ -18,39 +20,57 @@ export interface Conn {
 export class TalkHub {
   readonly talkId: string;
   #stage: BroadcastChannel;
+  #mod: BroadcastChannel;
+  /** 全接続(stage を受け取る)。 */
   #conns = new Set<Conn>();
+  /** presenter / moderator の接続(mod チャンネルも受け取る)。#conns の部分集合。 */
+  #modConns = new Set<Conn>();
 
   constructor(talkId: string) {
     this.talkId = talkId;
     this.#stage = new BroadcastChannel(`talk:${talkId}:stage`);
     this.#stage.onmessage = (e: MessageEvent) => {
-      this.#fanoutLocal(e.data as Down);
+      this.#fanout(this.#conns, e.data as Down);
+    };
+    this.#mod = new BroadcastChannel(`talk:${talkId}:mod`);
+    this.#mod.onmessage = (e: MessageEvent) => {
+      this.#fanout(this.#modConns, e.data as Down);
     };
   }
 
-  add(conn: Conn): void {
+  /** 接続を追加する。`mod` は presenter/moderator(mod チャンネルも購読)。 */
+  add(conn: Conn, opts: { mod?: boolean } = {}): void {
     this.#conns.add(conn);
+    if (opts.mod) this.#modConns.add(conn);
   }
 
   /** 接続を外す。ローカルが空になったら channel を閉じて true を返す。 */
   remove(conn: Conn): boolean {
     this.#conns.delete(conn);
+    this.#modConns.delete(conn);
     if (this.#conns.size === 0) {
       this.#stage.close();
+      this.#mod.close();
       return true;
     }
     return false;
   }
 
-  /** このイベントを全 isolate の全接続へ配信する。 */
+  /** このイベントを全 isolate の全接続へ配信する(stage)。 */
   broadcast(down: Down): void {
-    this.#fanoutLocal(down);
+    this.#fanout(this.#conns, down);
     this.#stage.postMessage(down);
   }
 
-  /** 同一 isolate 内の接続だけへ配信する。 */
-  #fanoutLocal(down: Down): void {
-    for (const c of this.#conns) c.send(down);
+  /** level-0 post を全 isolate の presenter/moderator 接続だけへ配信する(mod)。 */
+  broadcastMod(down: Down): void {
+    this.#fanout(this.#modConns, down);
+    this.#mod.postMessage(down);
+  }
+
+  /** 指定した接続集合へ配信する。 */
+  #fanout(conns: Set<Conn>, down: Down): void {
+    for (const c of conns) c.send(down);
   }
 
   /** 同一 isolate 内の接続数(count は best-effort でこれを使う)。 */

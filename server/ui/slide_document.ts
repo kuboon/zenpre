@@ -35,7 +35,7 @@ export type SlideDocInput = {
   /** 読み込むクライアントスクリプト(default: "/slide.js")。 */
   clientScript?: string;
   /** Talk(relay)にひも付ける場合の設定。 */
-  talk?: { talk_id: string; role: "audience" | "presenter" };
+  talk?: { talk_id: string; role: "audience" | "presenter" | "moderator" };
   /** 埋め込み固定 timeline(Player で再生する。reaction layer も出す)。 */
   timeline?: TimelineEntry[];
 };
@@ -80,6 +80,14 @@ export async function renderSlideDocument(
   const reactionLayer = input.talk || input.timeline
     ? "\n<zen-reaction-layer></zen-reaction-layer>"
     : "";
+  // Talk のときは post 一覧を出す。role に応じてフォーム/モデレータ UI を切り替える。
+  const talkRole = input.talk?.role;
+  const postViewer = talkRole
+    ? `\n<zen-post-viewer data-role="${talkRole}"></zen-post-viewer>`
+    : "";
+  const moderatorUi = talkRole === "presenter" || talkRole === "moderator"
+    ? "\n<zen-moderator-ui></zen-moderator-ui>"
+    : "";
 
   return `<!doctype html>
 <html lang="ja" data-theme="${escapeHtml(theme)}">
@@ -98,7 +106,7 @@ export async function renderSlideDocument(
 <zen-slide-viewer${autoplayAttr}><div class="zen-track">${pagesHtml}</div></zen-slide-viewer>${reactionLayer}
 </div>
 </div>
-</div>
+</div>${postViewer}${moderatorUi}
 <script type="application/json" id="zen-slide-data">${data}</script>${talkScript}${timelineScript}
 <script type="module" src="${clientScript}"></script>
 </body>

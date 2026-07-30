@@ -8,13 +8,21 @@ import { Recorder } from "@kuboon/zenpre/recorder.ts";
 import type { Action } from "@kuboon/zenpre/schemas.ts";
 import type { ZenSlideViewer } from "@kuboon/zenpre/components/slide_viewer.ts";
 import type { ZenReactionLayer } from "@kuboon/zenpre/components/reaction_layer.ts";
-import { defineComponents, reactionBar, readTalkData } from "./relay_ui.ts";
+import {
+  applyPostAction,
+  defineComponents,
+  reactionBar,
+  readPostEls,
+  readTalkData,
+  wirePostSending,
+} from "./relay_ui.ts";
 
 defineComponents();
 
 const data = readTalkData();
 const viewer = document.querySelector<ZenSlideViewer>("zen-slide-viewer");
 const layer = document.querySelector<ZenReactionLayer>("zen-reaction-layer");
+const posts = readPostEls();
 
 // fragment の key はサーバに送られない。localStorage に退避して URL からは消す。
 const hashKey = new URLSearchParams(location.hash.slice(1)).get("key");
@@ -48,17 +56,26 @@ if (data && viewer) {
     talkId,
     key,
     handlers: {
+      onWelcome: (w) => {
+        if (posts.postViewer) posts.postViewer.myId = w.audience_id;
+      },
       onAction: ({ action, from }) => {
         if (action.type === "reaction") {
           layer?.emit(action.emoji);
           // 他者の reaction だけここで記録(自分の分は publish 時に記録済み)。
           if (from !== "presenter") recorder.record(action);
+        } else {
+          // level-0 post は moderator UI のキューへ、level≥1/vote は post viewer へ。
+          applyPostAction(action, from, posts);
         }
         // focus は presenter 自身が操作しているので viewer には適用しない。
       },
     },
   });
   relay.connect();
+
+  // 投稿(承認)/投票の送信を結線。承認は moderator UI 経由で level-1 を送る。
+  wirePostSending((action) => relay.send(action), posts);
 
   // 自分が pub する action(focus / 自分の reaction)は送信時に記録する。
   const publish = (action: Action) => {

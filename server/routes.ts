@@ -5,6 +5,7 @@ export const routes = route({
   slidePage: get("/s/:slide_id"),
   talkPage: get("/t/:talk_id"),
   talkPresent: get("/t/:talk_id/present"),
+  talkModerate: get("/t/:talk_id/moderate"),
   talkReplay: get("/t/:talk_id/replay"),
   api: route("api", {
     slidesCreate: post("/slides"),

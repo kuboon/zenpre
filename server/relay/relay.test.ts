@@ -86,7 +86,7 @@ async function setup() {
       },
       body: JSON.stringify({ slide_id: slide.slide_id }),
     }),
-  )).json() as { talk_id: string; event_key: string };
+  )).json() as { talk_id: string; event_key: string; moderator_key: string };
 
   const wsBase = base.replace("http", "ws");
   const wsUrl = (key?: string) =>
@@ -145,6 +145,94 @@ Deno.test("relay: roles, focus follow, reaction, forbidden, last_focus", async (
   presenter.close();
   audience.close();
   late.close();
+  await new Promise((r) => setTimeout(r, 100));
+  await server.shutdown();
+});
+
+Deno.test("relay: post moderation, vote aggregation, forbidden, too long", async () => {
+  const { server, talk, wsUrl } = await setup();
+
+  const presenter = new Sock(wsUrl(talk.event_key));
+  const moderator = new Sock(wsUrl(talk.moderator_key));
+  const audienceA = new Sock(wsUrl());
+  const audienceB = new Sock(wsUrl());
+  await Promise.all([
+    presenter.open(),
+    moderator.open(),
+    audienceA.open(),
+    audienceB.open(),
+  ]);
+
+  for (const s of [presenter, moderator, audienceA, audienceB]) {
+    s.send({ type: "join" });
+  }
+  const aw = await audienceA.next((m) => m.kind === "welcome");
+  const mw = await moderator.next((m) => m.kind === "welcome");
+  assertEquals(mw.role, "moderator");
+  assert(mw.audience_id.startsWith("mod:"));
+  const audienceAId = aw.audience_id as string;
+
+  // audience level-0 post -> presenter & moderator receive it, other audience does NOT.
+  audienceA.send({ type: "post", text: "hello?", level: 0 });
+  const pPost = await presenter.next((m) =>
+    m.kind === "action" && m.action.type === "post"
+  );
+  assertEquals(pPost.action.level, 0);
+  assertEquals(pPost.action.text, "hello?");
+  assertEquals(pPost.from, audienceAId);
+  const mPost = await moderator.next((m) =>
+    m.kind === "action" && m.action.type === "post"
+  );
+  assertEquals(mPost.action.level, 0);
+
+  // moderator approves -> level-1 post reaches EVERYONE (incl. both audiences).
+  moderator.send({
+    type: "post",
+    text: "hello?",
+    level: 1,
+    post_id: "post0001",
+  });
+  const bPost = await audienceB.next((m) =>
+    m.kind === "action" && m.action.type === "post"
+  );
+  // B's first post action must be the approved (level>=1) one, never the level-0.
+  assertEquals(bPost.action.level, 1);
+  assertEquals(bPost.action.post_id, "post0001");
+  const aPost = await audienceA.next((m) =>
+    m.kind === "action" && m.action.type === "post" && m.action.level === 1
+  );
+  assertEquals(aPost.action.post_id, "post0001");
+
+  // vote -> broadcast to everyone (clients aggregate locally).
+  audienceB.send({ type: "vote", post_id: "post0001" });
+  const aVote = await audienceA.next((m) =>
+    m.kind === "action" && m.action.type === "vote"
+  );
+  assertEquals(aVote.action.post_id, "post0001");
+
+  // audience cannot publish level>=1 posts -> forbidden.
+  audienceB.send({
+    type: "post",
+    text: "sneaky",
+    level: 1,
+    post_id: "x0000001",
+  });
+  const forbidden = await audienceB.next((m) =>
+    m.kind === "error" && m.code === "forbidden"
+  );
+  assert(forbidden);
+
+  // over the grapheme limit -> invalid (checked before rate limit).
+  audienceB.send({ type: "post", text: "あ".repeat(51), level: 0 });
+  const invalid = await audienceB.next((m) =>
+    m.kind === "error" && m.code === "invalid"
+  );
+  assert(invalid);
+
+  presenter.close();
+  moderator.close();
+  audienceA.close();
+  audienceB.close();
   await new Promise((r) => setTimeout(r, 100));
   await server.shutdown();
 });
