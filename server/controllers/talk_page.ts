@@ -23,7 +23,7 @@ async function renderTalk(
   talks: Talks,
   slides: Slides,
   talkId: string,
-  role: "audience" | "presenter",
+  role: "audience" | "presenter" | "moderator",
   clientScript: string,
 ): Promise<Response> {
   const talk = await talks.get(talkId);
@@ -73,6 +73,20 @@ export function talkPresentAction(talks: Talks, slides: Slides) {
       );
     },
   } satisfies Action<typeof routes.talkPresent>;
+}
+
+export function talkModerateAction(talks: Talks, slides: Slides) {
+  return {
+    handler(context) {
+      return renderTalk(
+        talks,
+        slides,
+        context.params.talk_id,
+        "moderator",
+        "/moderate.js",
+      );
+    },
+  } satisfies Action<typeof routes.talkModerate>;
 }
 
 export function talkReplayAction(talks: Talks, slides: Slides) {

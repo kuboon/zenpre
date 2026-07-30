@@ -10,6 +10,7 @@ const CLIENT_ENTRIES = [
   "slide.ts",
   "talk.ts",
   "present.ts",
+  "moderate.ts",
   "replay.ts",
   "home.ts",
 ] as const;

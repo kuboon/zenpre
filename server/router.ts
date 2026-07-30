@@ -17,6 +17,7 @@ import {
   slideUpdateAction,
 } from "./controllers/api/slides.ts";
 import {
+  talkModerateAction,
   talkPageAction,
   talkPresentAction,
   talkReplayAction,
@@ -46,6 +47,7 @@ export function makeRouter(deps: RouterDeps): Router {
   router.get(routes.slidePage, slidePageAction(slides));
   router.get(routes.talkPage, talkPageAction(talks, slides));
   router.get(routes.talkPresent, talkPresentAction(talks, slides));
+  router.get(routes.talkModerate, talkModerateAction(talks, slides));
   router.get(routes.talkReplay, talkReplayAction(talks, slides));
 
   router.post(routes.api.slidesCreate, slidesCreateAction(slides));

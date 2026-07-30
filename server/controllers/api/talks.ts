@@ -2,7 +2,8 @@
  * Talk の REST API。
  *
  * - `POST /api/talks`            — 作成。slide 紐付け時は `X-Slide-Key` が必要。
- *   `{ talk_id, event_key, moderator_key, audience_url, presenter_url }` を返す
+ *   `{ talk_id, event_key, moderator_key, audience_url, presenter_url,
+ *   moderator_url }` を返す
  * - `GET  /api/talks/:talk_id`   — 取得(公開)。`{ talk_id, slide_id, begin_at, end_at }`
  *
  * 認可は capability key のみ、cookie 不使用のため CORS は全開放。
@@ -58,6 +59,7 @@ export function talksCreateAction(talks: Talks, slides: Slides) {
         moderator_key,
         audience_url: `/t/${talk.talk_id}`,
         presenter_url: `/t/${talk.talk_id}/present#key=${event_key}`,
+        moderator_url: `/t/${talk.talk_id}/moderate#key=${moderator_key}`,
       }, 201);
     },
   } satisfies Action<typeof routes.api.talksCreate>;
