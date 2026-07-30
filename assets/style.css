@@ -145,14 +145,26 @@ zen-slide-viewer .zen-focus {
 
 @keyframes zen-reaction-float {
   0% {
-    transform: translateY(0) scale(0.8);
+    transform: translate(0, 0) rotate(0deg) scale(0.8);
     opacity: 0;
   }
-  15% {
+  12% {
     opacity: 1;
   }
+  25% {
+    transform: translate(var(--zen-sway, 20px), -18dvh)
+      rotate(var(--zen-rot, 8deg)) scale(1.1);
+  }
+  50% {
+    transform: translate(calc(var(--zen-sway, 20px) * -1), -38dvh)
+      rotate(calc(var(--zen-rot, 8deg) * -1)) scale(1.12);
+  }
+  75% {
+    transform: translate(var(--zen-sway, 20px), -56dvh)
+      rotate(var(--zen-rot, 8deg)) scale(1.16);
+  }
   100% {
-    transform: translateY(-70dvh) scale(1.2);
+    transform: translate(0, -72dvh) rotate(0deg) scale(1.2);
     opacity: 0;
   }
 }

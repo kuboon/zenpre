@@ -33,15 +33,21 @@ export class ZenReactionLayer extends HTMLElement {
     const el = document.createElement("span");
     el.textContent = emoji;
     const x = 5 + Math.floor(this.#rand() * 90); // 5%〜95%
+    // 風船のように左右に揺れながら昇る。振れ幅/向き/傾き/速度を個体差でばらす。
+    const amp = 14 + Math.floor(this.#rand() * 26); // 14〜40px
+    const dir = this.#rand() < 0.5 ? 1 : -1; // 最初に振れる向き
+    const rot = 4 + Math.floor(this.#rand() * 8); // 4〜12deg
+    const dur = 2.4 + this.#rand() * 1.0; // 2.4〜3.4s
     el.style.cssText =
       `position:absolute;left:${x}%;bottom:-2rem;font-size:2rem;will-change:transform,opacity;` +
-      `animation:zen-reaction-float 2.4s ease-out forwards`;
+      `--zen-sway:${dir * amp}px;--zen-rot:${dir * rot}deg;` +
+      `animation:zen-reaction-float ${dur.toFixed(2)}s ease-in-out forwards`;
     this.appendChild(el);
     this.#beep(emoji);
     globalThis.setTimeout(() => {
       el.remove();
       this.#active--;
-    }, 2400);
+    }, dur * 1000);
   }
 
   #rand(): number {
