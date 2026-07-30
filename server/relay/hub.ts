@@ -17,6 +17,12 @@ export interface Conn {
   send(down: Down): void;
 }
 
+/** MCP(list_pending_posts)が取得する未承認 post のスナップショット。 */
+export type PendingPost = { text: string; from: string; ts: number };
+
+/** 未承認 post のリングバッファ上限(直近 N 件だけ保持)。 */
+const MAX_PENDING = 100;
+
 export class TalkHub {
   readonly talkId: string;
   #stage: BroadcastChannel;
@@ -25,6 +31,8 @@ export class TalkHub {
   #conns = new Set<Conn>();
   /** presenter / moderator の接続(mod チャンネルも受け取る)。#conns の部分集合。 */
   #modConns = new Set<Conn>();
+  /** 直近の未承認 post(MCP の list_pending_posts 用、best-effort・isolate ローカル)。 */
+  #pending: PendingPost[] = [];
 
   constructor(talkId: string) {
     this.talkId = talkId;
@@ -34,7 +42,9 @@ export class TalkHub {
     };
     this.#mod = new BroadcastChannel(`talk:${talkId}:mod`);
     this.#mod.onmessage = (e: MessageEvent) => {
-      this.#fanout(this.#modConns, e.data as Down);
+      const down = e.data as Down;
+      this.#recordPending(down);
+      this.#fanout(this.#modConns, down);
     };
   }
 
@@ -64,6 +74,7 @@ export class TalkHub {
 
   /** level-0 post を全 isolate の presenter/moderator 接続だけへ配信する(mod)。 */
   broadcastMod(down: Down): void {
+    this.#recordPending(down);
     this.#fanout(this.#modConns, down);
     this.#mod.postMessage(down);
   }
@@ -71,6 +82,27 @@ export class TalkHub {
   /** 指定した接続集合へ配信する。 */
   #fanout(conns: Set<Conn>, down: Down): void {
     for (const c of conns) c.send(down);
+  }
+
+  /** level-0 post をリングバッファに記録する(直近 {@link MAX_PENDING} 件)。 */
+  #recordPending(down: Down): void {
+    if (
+      down.kind !== "action" || down.action.type !== "post" ||
+      "post_id" in down.action
+    ) return;
+    this.#pending.push({
+      text: down.action.text,
+      from: down.from,
+      ts: down.ts,
+    });
+    if (this.#pending.length > MAX_PENDING) {
+      this.#pending.splice(0, this.#pending.length - MAX_PENDING);
+    }
+  }
+
+  /** 未承認 post のスナップショット(古い順)。 */
+  pendingPosts(): PendingPost[] {
+    return [...this.#pending];
   }
 
   /** 同一 isolate 内の接続数(count は best-effort でこれを使う)。 */
@@ -90,6 +122,32 @@ export class HubRegistry {
       this.#hubs.set(talkId, hub);
     }
     return hub;
+  }
+
+  /** 既存の hub があれば返す(無ければ作らない)。MCP からの読み取り用。 */
+  peek(talkId: string): TalkHub | undefined {
+    return this.#hubs.get(talkId);
+  }
+
+  /** この isolate が把握している未承認 post(hub が無ければ空)。 */
+  pendingPosts(talkId: string): PendingPost[] {
+    return this.#hubs.get(talkId)?.pendingPosts() ?? [];
+  }
+
+  /**
+   * stage(全員)へ配信する。ローカル hub があればそれを使い、無ければ
+   * 一時 BroadcastChannel で他 isolate の hub へ届ける(MCP publish_post 用)。
+   */
+  publishStage(talkId: string, down: Down): void {
+    const hub = this.#hubs.get(talkId);
+    if (hub) {
+      hub.broadcast(down);
+      return;
+    }
+    const ch = new BroadcastChannel(`talk:${talkId}:stage`);
+    ch.postMessage(down);
+    // postMessage の配送完了を待ってから閉じる(即時 close はメッセージを落とし得る)。
+    globalThis.setTimeout(() => ch.close(), 100);
   }
 
   drop(talkId: string): void {
