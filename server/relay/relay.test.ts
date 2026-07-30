@@ -2,6 +2,7 @@ import { assert, assertEquals } from "@std/assert";
 import { createApp } from "../app.ts";
 import { Slides } from "../repo/slides.ts";
 import { Talks } from "../repo/talks.ts";
+import { Timelines } from "../repo/timelines.ts";
 import { memoryFactory } from "../repo/memory.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -63,7 +64,8 @@ class Sock {
 async function setup() {
   const slides = new Slides(memoryFactory);
   const talks = new Talks(memoryFactory);
-  const handler = createApp({ slides, talks });
+  const timelines = new Timelines(memoryFactory);
+  const handler = createApp({ slides, talks, timelines });
   const server = Deno.serve({ port: 0, onListen() {} }, handler);
   const base = `http://127.0.0.1:${(server.addr as Deno.NetAddr).port}`;
 

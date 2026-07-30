@@ -4,6 +4,8 @@
  * 配信する。reaction は受信して表示する。
  */
 import { RelayClient } from "@kuboon/zenpre/relay_client.ts";
+import { Recorder } from "@kuboon/zenpre/recorder.ts";
+import type { Action } from "@kuboon/zenpre/schemas.ts";
 import type { ZenSlideViewer } from "@kuboon/zenpre/components/slide_viewer.ts";
 import type { ZenReactionLayer } from "@kuboon/zenpre/components/reaction_layer.ts";
 import { defineComponents, reactionBar, readTalkData } from "./relay_ui.ts";
@@ -26,16 +28,43 @@ if (hashKey) {
 const key = hashKey ?? localStorage.getItem(storeKey) ?? undefined;
 
 if (data && viewer) {
+  const talkId = data.talk_id;
+
+  // Recorder: 自分が pub した action と受信した action を記録し、
+  // 30 秒ごと & 離脱時に PUT /api/talks/:id/timeline で追記する。
+  const recorder = new Recorder({
+    onFlush: async (chunk) => {
+      if (!key) return;
+      await fetch(`/api/talks/${talkId}/timeline`, {
+        method: "PUT",
+        headers: { "content-type": "application/json", "x-event-key": key },
+        body: JSON.stringify(chunk),
+      });
+    },
+  });
+  recorder.start();
+
   const relay = new RelayClient({
-    talkId: data.talk_id,
+    talkId,
     key,
     handlers: {
-      onAction: ({ action }) => {
-        if (action.type === "reaction") layer?.emit(action.emoji);
+      onAction: ({ action, from }) => {
+        if (action.type === "reaction") {
+          layer?.emit(action.emoji);
+          // 他者の reaction だけここで記録(自分の分は publish 時に記録済み)。
+          if (from !== "presenter") recorder.record(action);
+        }
+        // focus は presenter 自身が操作しているので viewer には適用しない。
       },
     },
   });
   relay.connect();
+
+  // 自分が pub する action(focus / 自分の reaction)は送信時に記録する。
+  const publish = (action: Action) => {
+    relay.send(action);
+    recorder.record(action);
+  };
 
   // ページ送りを focus として配信(idx 0 = ページ先頭)。
   let lastPage = 0;
@@ -43,9 +72,16 @@ if (data && viewer) {
     const page = (e as CustomEvent<{ page: number }>).detail.page;
     if (page !== lastPage) {
       lastPage = page;
-      relay.send({ type: "focus", page, idx: 0 });
+      publish({ type: "focus", page, idx: 0 });
     }
   });
 
-  reactionBar((emoji) => relay.send({ type: "reaction", emoji }));
+  reactionBar((emoji) => publish({ type: "reaction", emoji }));
+
+  // 定期フラッシュ + 離脱時フラッシュ。
+  globalThis.setInterval(() => void recorder.flush(), 30_000);
+  globalThis.addEventListener("pagehide", () => void recorder.flush());
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") void recorder.flush();
+  });
 }

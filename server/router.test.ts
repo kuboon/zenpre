@@ -2,29 +2,33 @@ import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import { makeRouter } from "./router.ts";
 import { Slides } from "./repo/slides.ts";
 import { Talks } from "./repo/talks.ts";
+import { Timelines } from "./repo/timelines.ts";
 import { memoryFactory } from "./repo/memory.ts";
 
 function app() {
   return makeRouter({
     slides: new Slides(memoryFactory),
     talks: new Talks(memoryFactory),
+    timelines: new Timelines(memoryFactory),
   });
 }
 
-Deno.test("GET / is the auto-playing intro deck (dogfooding)", async () => {
+Deno.test("GET / is the Player-driven intro deck (dogfooding)", async () => {
   const res = await app().fetch(new Request("http://x/"));
   assertEquals(res.status, 200);
   assertStringIncludes(res.headers.get("content-type") ?? "", "text/html");
   const html = await res.text();
   assertStringIncludes(html, "<zen-slide-viewer");
-  // autoplay is enabled on the home deck
-  assertStringIncludes(html, "autoplay");
-  assertStringIncludes(html, "data-autoplay-ms=");
+  // driven by an embedded fixed timeline via the Player (not the autoplay timer)
+  assertStringIncludes(html, 'id="zen-timeline-data"');
+  assertStringIncludes(html, '"type":"reaction"');
+  assertStringIncludes(html, "<zen-reaction-layer>");
+  assertStringIncludes(html, "/home.js");
+  assert(!html.includes("data-autoplay-ms="));
   // rendered from ZenPre's own features: multiple SSR pages
   assertStringIncludes(html, 'class="zen-page" data-page="1"');
   assertStringIncludes(html, 'class="zen-page" data-page="2"');
   assertStringIncludes(html, "ZenPre");
-  assertStringIncludes(html, "/slide.js");
 });
 
 Deno.test("POST /api/slides creates and returns id + key", async () => {
@@ -265,4 +269,115 @@ Deno.test("GET /t/:id renders audience view with talk data + /talk.js", async ()
   assertStringIncludes(html, '"role":"audience"');
   assertStringIncludes(html, "/talk.js");
   assertStringIncludes(html, "<zen-reaction-layer>");
+});
+
+async function makeTalk(router: ReturnType<typeof app>) {
+  const slide = await (await router.fetch(
+    new Request("http://x/api/slides", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ markdown: "# A\n\n---\n\n# B" }),
+    }),
+  )).json() as { slide_id: string; slide_key: string };
+  return await (await router.fetch(
+    new Request("http://x/api/talks", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-slide-key": slide.slide_key,
+      },
+      body: JSON.stringify({ slide_id: slide.slide_id }),
+    }),
+  )).json() as { talk_id: string; event_key: string };
+}
+
+Deno.test("PUT /api/talks/:id/timeline requires presenter key; GET merges chunks", async () => {
+  const router = app();
+  const talk = await makeTalk(router);
+  const url = `http://x/api/talks/${talk.talk_id}/timeline`;
+
+  // missing key -> 401
+  const noKey = await router.fetch(
+    new Request(url, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify([{ t: 0, action: { type: "join" } }]),
+    }),
+  );
+  assertEquals(noKey.status, 401);
+
+  // wrong key -> 403
+  const bad = await router.fetch(
+    new Request(url, {
+      method: "PUT",
+      headers: { "content-type": "application/json", "x-event-key": "nope" },
+      body: JSON.stringify([{ t: 0, action: { type: "join" } }]),
+    }),
+  );
+  assertEquals(bad.status, 403);
+
+  // append two chunks out of order
+  const put = (entries: unknown) =>
+    router.fetch(
+      new Request(url, {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          "x-event-key": talk.event_key,
+        },
+        body: JSON.stringify(entries),
+      }),
+    );
+  assertEquals(
+    (await put([{ t: 2000, action: { type: "focus", page: 2, idx: 0 } }]))
+      .status,
+    201,
+  );
+  assertEquals(
+    (await put([
+      { t: 0, action: { type: "focus", page: 1, idx: 0 } },
+      { t: 1000, action: { type: "reaction", emoji: "👏" } },
+    ])).status,
+    201,
+  );
+
+  const res = await router.fetch(new Request(url));
+  assertEquals(res.status, 200);
+  const body = await res.json() as {
+    entries: Array<{ t: number; action: { type: string } }>;
+  };
+  // merged and sorted by t
+  assertEquals(body.entries.map((e) => e.t), [0, 1000, 2000]);
+  assertEquals(body.entries[2].action.type, "focus");
+});
+
+Deno.test("PUT timeline rejects invalid entries", async () => {
+  const router = app();
+  const talk = await makeTalk(router);
+  const res = await router.fetch(
+    new Request(`http://x/api/talks/${talk.talk_id}/timeline`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "x-event-key": talk.event_key,
+      },
+      body: JSON.stringify([{
+        t: -1,
+        action: { type: "focus", page: 1, idx: 0 },
+      }]),
+    }),
+  );
+  assertEquals(res.status, 400);
+});
+
+Deno.test("GET /t/:id/replay renders the replay client", async () => {
+  const router = app();
+  const talk = await makeTalk(router);
+  const res = await router.fetch(
+    new Request(`http://x/t/${talk.talk_id}/replay`),
+  );
+  assertEquals(res.status, 200);
+  const html = await res.text();
+  assertStringIncludes(html, "/replay.js");
+  assertStringIncludes(html, "<zen-slide-viewer");
 });

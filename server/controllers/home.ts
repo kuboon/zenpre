@@ -9,9 +9,9 @@ import type { Action } from "@remix-run/fetch-router";
 import type { routes } from "../routes.ts";
 import { renderSlideDocument } from "../ui/slide_document.ts";
 import {
-  INTRO_AUTOPLAY_MS,
   INTRO_MARKDOWN,
   INTRO_THEME,
+  INTRO_TIMELINE,
 } from "../content/intro.ts";
 
 export const homeAction = {
@@ -20,7 +20,8 @@ export const homeAction = {
       title: "ZenPre",
       markdown: INTRO_MARKDOWN,
       theme: INTRO_THEME,
-      autoplayMs: INTRO_AUTOPLAY_MS,
+      timeline: INTRO_TIMELINE,
+      clientScript: "/home.js",
     });
     return new Response(doc, {
       headers: { "content-type": "text/html; charset=utf-8" },

@@ -7,6 +7,7 @@
  * する。`autoplay` を渡すとビューアが自動でページ送りする。
  */
 import { renderSlides } from "@kuboon/zenpre/render.ts";
+import type { TimelineEntry } from "@kuboon/zenpre/schemas.ts";
 
 const escapeHtml = (s: string): string =>
   s.replace(
@@ -35,6 +36,8 @@ export type SlideDocInput = {
   clientScript?: string;
   /** Talk(relay)にひも付ける場合の設定。 */
   talk?: { talk_id: string; role: "audience" | "presenter" };
+  /** 埋め込み固定 timeline(Player で再生する。reaction layer も出す)。 */
+  timeline?: TimelineEntry[];
 };
 
 /** スライド表示用の完全な HTML ドキュメントを返す。 */
@@ -68,7 +71,13 @@ export async function renderSlideDocument(
       JSON.stringify(input.talk).replace(/</g, "\\u003c")
     }</script>`
     : "";
-  const reactionLayer = input.talk
+  const timelineScript = input.timeline
+    ? `\n<script type="application/json" id="zen-timeline-data">${
+      JSON.stringify(input.timeline).replace(/</g, "\\u003c")
+    }</script>`
+    : "";
+  // relay(talk)または埋め込み timeline があるとき reaction を表示する。
+  const reactionLayer = input.talk || input.timeline
     ? "\n<zen-reaction-layer></zen-reaction-layer>"
     : "";
 
@@ -90,7 +99,7 @@ export async function renderSlideDocument(
 </div>
 </div>
 </div>
-<script type="application/json" id="zen-slide-data">${data}</script>${talkScript}
+<script type="application/json" id="zen-slide-data">${data}</script>${talkScript}${timelineScript}
 <script type="module" src="${clientScript}"></script>
 </body>
 </html>`;

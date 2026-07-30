@@ -2,13 +2,32 @@
  * トップページ(`/`)で自動再生する ZenPre の紹介プレゼン。
  *
  * ZenPre 自身の機能(`---` 区切り・見出し採番・shiki・mermaid・daisyUI theme)
- * だけで書かれた dogfooding のスライド。KV を使わず静的に配信する。
+ * だけで書かれた dogfooding のスライド。KV を使わず静的に配信し、固定の
+ * {@link INTRO_TIMELINE} を `Player`(M4)で再生する(focus と reaction)。
  */
+import type { TimelineEntry } from "@kuboon/zenpre/schemas.ts";
 
 export const INTRO_THEME = "synthwave";
 
-/** 1 ページあたりの自動送り間隔(ms)。 */
-export const INTRO_AUTOPLAY_MS = 5000;
+/**
+ * トップページで Player に流す固定 timeline。presenter が 6 ページを送りつつ
+ * リアクションを飛ばす様子を再現する(ループ再生)。焦点は各ページ先頭
+ * (idx 0)。t はミリ秒。
+ */
+export const INTRO_TIMELINE: TimelineEntry[] = [
+  { t: 0, action: { type: "focus", page: 1, idx: 0 } },
+  { t: 1800, action: { type: "reaction", emoji: "👋" } },
+  { t: 4000, action: { type: "focus", page: 2, idx: 0 } },
+  { t: 6200, action: { type: "reaction", emoji: "👏" } },
+  { t: 8000, action: { type: "focus", page: 3, idx: 0 } },
+  { t: 10500, action: { type: "reaction", emoji: "🎉" } },
+  { t: 12000, action: { type: "focus", page: 4, idx: 0 } },
+  { t: 14000, action: { type: "reaction", emoji: "🤔" } },
+  { t: 16000, action: { type: "focus", page: 5, idx: 0 } },
+  { t: 19000, action: { type: "focus", page: 6, idx: 0 } },
+  { t: 20500, action: { type: "reaction", emoji: "❤️" } },
+  { t: 22000, action: { type: "reaction", emoji: "🎉" } },
+];
 
 export const INTRO_MARKDOWN = `# ZenPre
 
