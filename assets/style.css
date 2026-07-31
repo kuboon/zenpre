@@ -126,6 +126,25 @@ zen-slide-viewer .zen-mermaid svg {
   height: auto;
 }
 
+/* ---- HTML スライド(サンドボックス iframe) ---------------------------- */
+
+zen-slide-viewer .zen-html-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* ページ全体が HTML のときは prose の余白を消して端まで使う。 */
+zen-slide-viewer .zen-content:has(> .zen-html-page) {
+  padding: 0;
+  height: 100%;
+}
+
+zen-slide-viewer .zen-html-page {
+  height: 100%;
+}
+
 zen-slide-viewer .zen-focus {
   animation: zen-focus-pulse 1.2s ease-out;
 }

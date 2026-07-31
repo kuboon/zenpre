@@ -64,6 +64,40 @@ Deno.test("renders mermaid blocks to inline SVG", async () => {
   assert(!pages[0].includes("language-mermaid"));
 });
 
+Deno.test("zen-html fence emits a sandboxed iframe (no same-origin, blocks network)", async () => {
+  const md =
+    "# Deck\n\n---\n\n```zen-html\n<div class=box></div>\n<script>fetch('https://evil/x')<\/script>\n```\n";
+  const { pages } = await renderSlides(md);
+  const html = pages[1];
+  // a sandboxed iframe is emitted
+  assertStringIncludes(html, "<iframe");
+  assertStringIncludes(html, 'class="zen-html-frame"');
+  assertStringIncludes(html, 'sandbox="allow-scripts"');
+  // must NOT grant same-origin (that would defeat the isolation)
+  assert(!html.includes("allow-same-origin"));
+  // the srcdoc carries the network-blocking CSP
+  assertStringIncludes(html, "Content-Security-Policy");
+  assertStringIncludes(html, "connect-src &#39;none&#39;"); // escaped single quotes
+  // the code block is gone (not left for shiki)
+  assert(!html.includes("language-zen-html"));
+});
+
+Deno.test("zen-html author markup is entity-escaped inside srcdoc", async () => {
+  const md = "```zen-html\n<script>alert(1)<\/script>\n```\n";
+  const { pages } = await renderSlides(md);
+  // author <script> survives only as escaped text inside the srcdoc attribute
+  assertStringIncludes(pages[0], "&lt;script&gt;alert(1)&lt;/script&gt;");
+  // and NOT as a live script tag in the host page
+  assert(!pages[0].includes("<script>alert(1)"));
+});
+
+Deno.test("plain ```html stays a highlighted code sample (not sandboxed)", async () => {
+  const md = "# H\n\n```html\n<b>hi</b>\n```\n";
+  const { pages } = await renderSlides(md);
+  assertStringIncludes(pages[0], "shiki");
+  assert(!pages[0].includes("zen-html-frame"));
+});
+
 Deno.test("empty leading page (md starting with '---') is dropped", async () => {
   const md = "---\n\n# First\n\nbody";
   // Note: leading '---' after nothing is frontmatter-like; ensure no empty page

@@ -7,6 +7,7 @@
     "./schemas.ts": "./schemas.ts",
     "./keys.ts": "./keys.ts",
     "./render.ts": "./render.ts",
+    "./sandbox.ts": "./sandbox.ts",
     "./relay_client.ts": "./relay_client.ts",
     "./recorder.ts": "./recorder.ts",
     "./player.ts": "./player.ts",

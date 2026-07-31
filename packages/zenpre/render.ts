@@ -25,6 +25,7 @@ import rehypeShiki from "@shikijs/rehype";
 import { toHtml } from "hast-util-to-html";
 import { visit } from "unist-util-visit";
 import { renderMermaidSVG } from "beautiful-mermaid";
+import { sandboxedHtmlFrame } from "./sandbox.ts";
 import type { Element, Root, RootContent } from "hast";
 
 /** ページ内の heading 参照(focus のターゲットに使う)。 */
@@ -99,6 +100,37 @@ function rehypeMermaid() {
 }
 
 /**
+ * ` ```zen-html ` コードブロックを、全通信を遮断したサンドボックス `<iframe>`
+ * に置換する rehype プラグイン(mermaid と同型)。author の生 HTML はこの
+ * フェンス経由でのみ出力に到達し、必ず {@link sandboxedHtmlFrame} で隔離される。
+ * shiki より前に適用して、`zen-html` が未知言語として shiki に渡らないようにする。
+ *
+ * 素の ` ```html ` は対象外(従来どおり shiki のソースハイライトのまま)。
+ */
+function rehypeHtmlSandbox() {
+  return (tree: Root) => {
+    visit(tree, "element", (node, index, parent) => {
+      if (node.tagName !== "pre" || index === undefined || !parent) return;
+      const code = node.children.find(
+        (c): c is Element => c.type === "element" && c.tagName === "code",
+      );
+      if (!code) return;
+      const classes = code.properties?.className;
+      if (!Array.isArray(classes) || !classes.includes("language-zen-html")) {
+        return;
+      }
+      const replacement = {
+        type: "element",
+        tagName: "div",
+        properties: { className: ["zen-html-page"] },
+        children: [{ type: "raw", value: sandboxedHtmlFrame(textOf(code)) }],
+      } as unknown as Element;
+      parent.children[index] = replacement;
+    });
+  };
+}
+
+/**
  * markdown をスライド(ページごとの HTML)にレンダリングする。
  *
  * @param markdown 入力 markdown(`---` 単独行でページ分割)。
@@ -114,6 +146,7 @@ export async function renderSlides(
     .use(remarkFrontmatter, ["yaml"])
     .use(remarkRehype)
     .use(rehypeMermaid)
+    .use(rehypeHtmlSandbox)
     .use(rehypeShiki, { theme: opts.theme ?? "github-light" });
 
   const tree = (await processor.run(processor.parse(markdown))) as Root;
