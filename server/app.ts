@@ -10,6 +10,37 @@ import { handleMcp } from "./mcp.ts";
 
 export type AppDeps = RouterDeps;
 
+/**
+ * HTML ページに付与する host CSP。author `css` の `url()`/`@import` beacon や
+ * markdown のリモート画像など、**untrusted なスライド内容からの外向き通信を
+ * 遮断**する(同一オリジンと `data:`/`blob:` のみ許可)。
+ *
+ * - `connect-src 'self'` は同一オリジンの relay(wss)を許可する。
+ * - `script-src` に `'unsafe-inline'` を含むのは、HTML スライドの `srcdoc`
+ *   iframe が **埋め込み元(このページ)の CSP を継承**するため。継承した
+ *   script-src が inline を禁じると iframe 内の author JS が動かない。host 側は
+ *   author の `<script>` 注入経路が無い(markdown 内の生 HTML は破棄され、
+ *   untrusted 内容は iframe に隔離される)ので inline 許可でも XSS 面は増えない。
+ *   `'unsafe-eval'` は arktype 等のバリデータ生成のため。
+ * - **通信遮断は維持される**: iframe 自身の meta-CSP(`connect-src 'none'` /
+ *   `img-src data:`)と host の `connect-src 'self'` / `img-src 'self' data:` が
+ *   両方適用(積集合)され、外向き通信は塞がれる。author `css` の
+ *   `url()`/`@import` beacon も host の img/font/connect 制限で無効化される。
+ */
+const SITE_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "media-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "frame-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join("; ");
+
 /** fetch ハンドラを返す(`Deno.serve` / Deno Deploy から使う)。 */
 export function createApp(deps: AppDeps): (req: Request) => Promise<Response> {
   const router = makeRouter(deps);
@@ -25,6 +56,11 @@ export function createApp(deps: AppDeps): (req: Request) => Promise<Response> {
         hubs,
       });
     }
-    return router.fetch(req);
+    const res = await router.fetch(req);
+    // HTML ページにだけ CSP を付ける(静的アセット/JSON は対象外)。
+    if (res.headers.get("content-type")?.includes("text/html")) {
+      res.headers.set("content-security-policy", SITE_CSP);
+    }
+    return res;
   };
 }

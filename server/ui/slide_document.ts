@@ -7,19 +7,8 @@
  * する。`autoplay` を渡すとビューアが自動でページ送りする。
  */
 import { renderSlides } from "@kuboon/zenpre/render.ts";
+import { escapeHtml } from "@kuboon/zenpre/sandbox.ts";
 import type { TimelineEntry } from "@kuboon/zenpre/schemas.ts";
-
-const escapeHtml = (s: string): string =>
-  s.replace(
-    /[&<>"']/g,
-    (c) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    }[c]!),
-  );
 
 /** author CSS を `<style>` に埋める前の最小サニタイズ(style/script の閉じタグ封じ)。 */
 const sanitizeCss = (css: string): string =>

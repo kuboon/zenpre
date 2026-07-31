@@ -2,6 +2,11 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
+    <!-- host CSP(客席ページと同方針)。詳細は index.html のコメント参照。 -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://esm.sh; style-src 'self' 'unsafe-inline' https://zenpre.deno.dev; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data: https://zenpre.deno.dev; connect-src 'self' https://esm.sh https://zenpre.deno.dev wss://zenpre.deno.dev; frame-src 'self'; object-src 'none'; base-uri 'none'"
+    />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
