@@ -1,95 +1,126 @@
 /**
- * トップページ(`/`)で自動再生する ZenPre の紹介プレゼン。
+ * The ZenPre intro deck autoplayed on the home page (`/`).
  *
- * ZenPre 自身の機能(`---` 区切り・見出し採番・shiki・mermaid・daisyUI theme)
- * だけで書かれた dogfooding のスライド。KV を使わず静的に配信し、固定の
- * {@link INTRO_TIMELINE} を `Player`(M4)で再生する(focus と reaction)。
+ * This dogfooding deck is served statically without KV and replayed by the
+ * Player with a fixed {@link INTRO_TIMELINE} of focus and reaction actions.
  */
 import type { TimelineEntry } from "@kuboon/zenpre/schemas.ts";
 
 export const INTRO_THEME = "synthwave";
 
 /**
- * トップページで Player に流す固定 timeline。presenter が 6 ページを送りつつ
- * リアクションを飛ばす様子を再現する(ループ再生)。焦点は各ページ先頭
- * (idx 0)。t はミリ秒。
+ * Fixed timeline streamed into the home-page Player. It recreates a presenter
+ * moving focus through the deck while audience reactions rise in real time.
+ * `t` is milliseconds.
  */
 export const INTRO_TIMELINE: TimelineEntry[] = [
   { t: 0, action: { type: "focus", page: 1, idx: 0 } },
-  { t: 1800, action: { type: "reaction", emoji: "👋" } },
-  { t: 4000, action: { type: "focus", page: 2, idx: 0 } },
-  { t: 6200, action: { type: "reaction", emoji: "👏" } },
-  { t: 8000, action: { type: "focus", page: 3, idx: 0 } },
-  { t: 10500, action: { type: "reaction", emoji: "🎉" } },
-  { t: 12000, action: { type: "focus", page: 4, idx: 0 } },
-  { t: 14000, action: { type: "reaction", emoji: "🤔" } },
-  { t: 16000, action: { type: "focus", page: 5, idx: 0 } },
-  { t: 19000, action: { type: "focus", page: 6, idx: 0 } },
-  { t: 20500, action: { type: "reaction", emoji: "❤️" } },
-  { t: 22000, action: { type: "reaction", emoji: "🎉" } },
+  { t: 1100, action: { type: "reaction", emoji: "✨" } },
+  { t: 2400, action: { type: "focus", page: 2, idx: 1 } },
+  { t: 4200, action: { type: "focus", page: 2, idx: 2 } },
+  { t: 6000, action: { type: "focus", page: 2, idx: 3 } },
+  { t: 7600, action: { type: "focus", page: 2, idx: 4 } },
+  { t: 8300, action: { type: "reaction", emoji: "🎉" } },
+  { t: 8380, action: { type: "reaction", emoji: "❤️" } },
+  { t: 8460, action: { type: "reaction", emoji: "👏" } },
+  { t: 8540, action: { type: "reaction", emoji: "🎉" } },
+  { t: 8620, action: { type: "reaction", emoji: "❤️" } },
+  { t: 8700, action: { type: "reaction", emoji: "👏" } },
+  { t: 8780, action: { type: "reaction", emoji: "🎉" } },
+  { t: 9000, action: { type: "focus", page: 4, idx: 0 } },
+  { t: 10800, action: { type: "reaction", emoji: "⏺️" } },
+  { t: 11800, action: { type: "focus", page: 5, idx: 0 } },
+  { t: 14100, action: { type: "reaction", emoji: "🤖" } },
+  { t: 15000, action: { type: "focus", page: 6, idx: 0 } },
+  { t: 17200, action: { type: "reaction", emoji: "📱" } },
+  { t: 18100, action: { type: "focus", page: 7, idx: 0 } },
+  { t: 20200, action: { type: "focus", page: 8, idx: 0 } },
+  { t: 22300, action: { type: "reaction", emoji: "⚡" } },
+  { t: 23100, action: { type: "reaction", emoji: "🎉" } },
 ];
 
 export const INTRO_MARKDOWN = `# ZenPre
 
-**\`---\` 区切りの markdown を、そのままプレゼンに。**
+## Presentation, redefined.
 
-AI 時代のプレゼンツール。スマホ縦画面フルスクリーンがネイティブ。
+Interactive.
 
-_（このページ自体が ZenPre で作った自動再生スライドです）_
+AI-native.
 
----
-
-## そのまま書くだけ
-
-普通の markdown を書くと、\`---\` でページが分かれます。
-
-- 左右スワイプ / 矢印キー でページ移動
-- 上下スクロールでページ内を移動
-- 見出しごとに番号が振られ、後で「ここに注目」を送れる
+Mobile-native.
 
 ---
 
-## コードは自動ハイライト
+# Interaction
 
-\`\`\`ts
-import { renderSlides } from "@kuboon/zenpre";
+What you are watching right now is ZenPre AutoPlay.
 
-const slide = await renderSlides(md);
-slide.pages; // ページごとの HTML
-\`\`\`
+Share your slide URL with the audience before the session.
 
-shiki が markdown のコードブロックをそのまま色付けします。
+## Drive the room from a browser controller
 
----
+Advance pages in real time.
 
-## 図も markdown で
+## Go deeper with vertical focus
 
-\`\`\`mermaid
-flowchart LR
-  MD[markdown] --> R[renderSlides]
-  R --> V[zen-slide-viewer]
-  V --> A[audience]
-\`\`\`
+Scroll down into the exact point you want everyone to see.
 
-mermaid ブロックはインライン SVG になります。
+↓
 
----
+↓
 
-## テーマは daisyUI
+↓
 
-\`theme\` を変えるだけで配色が切り替わります
-（このスライドは \`synthwave\`）。
+↓
 
-light / dark / cupcake / dracula / nord / lofi …
+
+# Focus here.
+
+And audience interaction lands in the moment.
+
+🎉 ❤️ 👏
 
 ---
 
-## これから
+# AutoPlay
 
-- リアルタイム同期(presenter の操作を全員へ）
-- リアクション・投稿・投票
-- 記録して後から再生
+Every focus move and every interaction can be captured as JSON by the
+Record component, then replayed by the Player component.
 
-作り方・進捗は
-[GitHub: kuboon/zenpre](https://github.com/kuboon/zenpre) で。
+The presentation becomes an event stream, not a static file.
+
+---
+
+# AI-native
+
+Upload presentations and schedule live sessions smoothly from a remote MCP.
+
+Markdown and HTML are first-class. PowerPoint or PDF? Do we still need them?
+
+When an AI opens a slide URL, it can fetch the pure slide text directly.
+
+---
+
+# Mobile-native
+
+- Vertical fullscreen by default
+- Next topic: page transition
+- Deeper context: vertical scroll
+
+---
+
+# One more thing
+
+---
+
+# Own your stage
+
+ZenPre's refined component architecture lets you embed the presentation engine
+inside pages you already own.
+
+Just tell your AI:
+
+> I want to embed slides using https://zenpre.kbn.one/
+
+Try it now.
 `;
