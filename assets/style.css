@@ -168,30 +168,14 @@
   opacity: 0.7;
 }
 
+/* プレビューは枠を持たない。与えられた領域いっぱいにスライドを描画する
+   (実際の閲覧ページと同じく、表示領域に合わせてレスポンシブに伸縮する)。 */
 .zen-editor-preview {
-  display: grid;
-  place-items: center;
+  display: grid; /* 子(viewer)を stretch させて領域いっぱいに描画する */
   min-height: 0;
-  padding: 1rem;
-  background-color: var(--color-base-200);
-  box-sizing: border-box;
-}
-
-/* 実機の縦画面と同じ比率で見せる枠(phone モックアップの装飾は付けない)。 */
-.zen-preview-frame {
-  aspect-ratio: 462 / 978;
-  height: min(820px, calc(100dvh - 2rem));
-  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
-  border-radius: 1rem;
   background-color: var(--color-base-100);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-}
-
-@media (max-width: 900px) {
-  .zen-preview-frame {
-    height: min(520px, calc(50dvh - 2rem));
-  }
 }
 
 /* ---- トップページから /new への導線 ------------------------------------ */
@@ -218,6 +202,8 @@ zen-slide-viewer {
   width: 100%;
   height: 100%;
   outline: none;
+  /* 描画領域(端末幅・プレビュー幅)に応じて中身を伸縮させるための基準。 */
+  container-type: inline-size;
 }
 
 zen-slide-viewer .zen-track {
@@ -249,9 +235,11 @@ zen-slide-viewer .zen-page {
 }
 
 /* prose コンテンツ:端の余白。全画面表示では実機のノッチ/ホームバー
-   (safe-area)にも被らないようにする。 */
+   (safe-area)にも被らないようにする。文字サイズは描画領域の幅に追随させ、
+   スマホでもワイド画面でも同じ見え方になるようにする(枠で固定しない)。 */
 zen-slide-viewer .zen-content {
   max-width: none;
+  font-size: clamp(0.95rem, 3.4cqw, 1.4rem);
   padding:
     max(clamp(2rem, 8%, 3.5rem), env(safe-area-inset-top))
     max(clamp(1rem, 6%, 2rem), env(safe-area-inset-right))

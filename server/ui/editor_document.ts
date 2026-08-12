@@ -82,9 +82,7 @@ export function renderEditorDocument(): string {
     <output id="zen-result" class="zen-editor-result" hidden></output>
   </section>
   <section class="zen-editor-preview" id="zen-preview" data-theme="light">
-    <div class="zen-preview-frame">
-      <zen-slide-viewer></zen-slide-viewer>
-    </div>
+    <zen-slide-viewer></zen-slide-viewer>
   </section>
 </div>
 <script type="module" src="/new.js"></script>

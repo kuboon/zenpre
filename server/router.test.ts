@@ -69,6 +69,9 @@ Deno.test("GET /new is the markdown editor with live preview", async () => {
   assertStringIncludes(html, "/new.js");
   // the preview is client-rendered: no SSR pages baked in
   assert(!html.includes('class="zen-page"'));
+  // プレビューは枠を持たない(phone モックも固定比率の枠も付けない)
+  assert(!html.includes("mockup-phone"));
+  assert(!html.includes("zen-preview-frame"));
 });
 
 Deno.test("POST /api/slides creates and returns id + key", async () => {
