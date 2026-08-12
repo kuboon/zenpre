@@ -35,7 +35,7 @@ function addLink(label: string, href: string, note?: string): void {
   a.href = href;
   a.textContent = label;
   a.target = "_blank";
-  a.rel = "noopener";
+  a.rel = "noopener noreferrer";
   row.appendChild(a);
   const url = document.createElement("code");
   url.textContent = abs(href);
@@ -88,7 +88,7 @@ if (md && viewer) {
   // ---- 作成 -------------------------------------------------------------
   createBtn?.addEventListener("click", async () => {
     createBtn.disabled = true;
-    const original = createBtn.textContent;
+    const original = createBtn.textContent ?? "スライドを作成";
     createBtn.textContent = "作成中…";
     try {
       const res = await fetch("/api/slides", {

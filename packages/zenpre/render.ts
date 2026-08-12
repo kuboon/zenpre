@@ -73,9 +73,11 @@ function textOf(node: Element): string {
  * 外向き通信を禁じる CSP(server/app.ts)にも弾かれてコンソールが汚れる。
  * 図はローカルフォントにフォールバックさせ、出力を自己完結させる。
  */
-function stripRemoteImports(css: string): string {
-  return css.replace(
-    /@import\s+url\(\s*['"]?https?:\/\/[^)]*\)\s*;?/gi,
+function stripRemoteImports(svg: string): string {
+  // `@import url(...)` と `@import "..."` の両形式、`//` 始まりのスキーム相対、
+  // 末尾のメディアクエリ(`… screen;`)まで含めて落とす。
+  return svg.replace(
+    /@import\s+(?:url\(\s*['"]?(?:https?:)?\/\/[^)]*\)|['"](?:https?:)?\/\/[^'"]*['"])[^;]*;?/gi,
     "",
   );
 }

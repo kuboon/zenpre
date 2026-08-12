@@ -10,6 +10,13 @@ import { renderSlides } from "@kuboon/zenpre/render.ts";
 import { escapeHtml } from "@kuboon/zenpre/sandbox.ts";
 import type { TimelineEntry } from "@kuboon/zenpre/schemas.ts";
 
+/**
+ * CTA に使ってよいのは同一サイト内への遷移だけ。`/path`・`#frag`・`?query` を
+ * 許可し、`javascript:` 等のスキームや `//host`(スキーム相対)は弾く。
+ */
+const safeInternalHref = (href: string): string | null =>
+  /^(?:\/(?!\/)|#|\?)/.test(href) ? href : null;
+
 /** author CSS を `<style>` に埋める前の最小サニタイズ(style/script の閉じタグ封じ)。 */
 const sanitizeCss = (css: string): string =>
   css.replace(/<\/(style|script)/gi, "<\\/$1");
@@ -84,8 +91,9 @@ export async function renderSlideDocument(
   const moderatorUi = talkRole === "presenter" || talkRole === "moderator"
     ? "\n<zen-moderator-ui></zen-moderator-ui>"
     : "";
-  const cta = input.cta
-    ? `\n<a class="zen-cta" href="${escapeHtml(input.cta.href)}">${
+  const ctaHref = input.cta ? safeInternalHref(input.cta.href) : null;
+  const cta = input.cta && ctaHref
+    ? `\n<a class="zen-cta" href="${escapeHtml(ctaHref)}">${
       escapeHtml(input.cta.label)
     }</a>`
     : "";
