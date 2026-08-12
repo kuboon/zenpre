@@ -31,6 +31,26 @@ Deno.test("GET / is the Player-driven intro deck (dogfooding)", async () => {
   assertStringIncludes(html, "ZenPre");
 });
 
+Deno.test("phone mock is landing-only; other pages are fullscreen", async () => {
+  const router = app();
+  const home = await (await router.fetch(new Request("http://x/"))).text();
+  // ランディングだけ phone モックアップの演出を出す
+  assertStringIncludes(home, "mockup-phone");
+
+  const created = await (await router.fetch(
+    new Request("http://x/api/slides", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ markdown: "# Hi" }),
+    }),
+  )).json();
+  const slide = await (await router.fetch(
+    new Request(`http://x/s/${created.slide_id}`),
+  )).text();
+  assert(!slide.includes("mockup-phone"));
+  assertStringIncludes(slide, 'class="zen-screen"');
+});
+
 Deno.test("GET / links to the editor (動線)", async () => {
   const res = await app().fetch(new Request("http://x/"));
   const html = await res.text();

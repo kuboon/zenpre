@@ -23,6 +23,8 @@ export const homeAction = {
       timeline: INTRO_TIMELINE,
       clientScript: "/home.js",
       cta: { href: "/new", label: "スライドを作る" },
+      // ランディングだけ phone モックアップの中で再生して見せる。
+      phoneMock: true,
     });
     return new Response(doc, {
       headers: { "content-type": "text/html; charset=utf-8" },

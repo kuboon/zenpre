@@ -48,7 +48,17 @@
   color: var(--color-base-content);
 }
 
-/* ---- 全画面ステージ + phone モックアップ ------------------------------ */
+/* ---- 全画面ステージ ---------------------------------------------------- */
+
+/* 閲覧・発表ページの既定。枠を挟まずビューポートいっぱいに表示する。 */
+.zen-screen {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background-color: var(--color-base-100);
+}
+
+/* ---- phone モックアップ(ランディングの演出専用) ---------------------- */
 
 .zen-stage {
   min-height: 100dvh;
@@ -167,14 +177,19 @@
   box-sizing: border-box;
 }
 
-.zen-editor-preview .mockup-phone {
-  width: auto;
+/* 実機の縦画面と同じ比率で見せる枠(phone モックアップの装飾は付けない)。 */
+.zen-preview-frame {
+  aspect-ratio: 462 / 978;
   height: min(820px, calc(100dvh - 2rem));
   max-width: 100%;
+  overflow: hidden;
+  border-radius: 1rem;
+  background-color: var(--color-base-100);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
 }
 
 @media (max-width: 900px) {
-  .zen-editor-preview .mockup-phone {
+  .zen-preview-frame {
     height: min(520px, calc(50dvh - 2rem));
   }
 }
@@ -233,10 +248,15 @@ zen-slide-viewer .zen-page {
   color: var(--color-base-content);
 }
 
-/* prose コンテンツ:カメラノッチを避ける上余白 + 端の余白 */
+/* prose コンテンツ:端の余白。全画面表示では実機のノッチ/ホームバー
+   (safe-area)にも被らないようにする。 */
 zen-slide-viewer .zen-content {
   max-width: none;
-  padding: clamp(2rem, 8%, 3.5rem) clamp(1rem, 6%, 2rem) 2rem;
+  padding:
+    max(clamp(2rem, 8%, 3.5rem), env(safe-area-inset-top))
+    max(clamp(1rem, 6%, 2rem), env(safe-area-inset-right))
+    max(2rem, env(safe-area-inset-bottom))
+    max(clamp(1rem, 6%, 2rem), env(safe-area-inset-left));
 }
 
 /* 長いコード行はページを広げず、コードブロック内で横スクロールさせる */

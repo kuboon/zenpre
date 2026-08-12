@@ -29,6 +29,11 @@ export type SlideDocInput = {
   timeline?: TimelineEntry[];
   /** 画面右上に出す導線リンク(トップページから `/new` へ、等)。 */
   cta?: { href: string; label: string };
+  /**
+   * phone モックアップの枠に入れて見せる。ランディングページ(`/`)の演出専用。
+   * 実際に発表・閲覧するページは枠なしの全画面で表示する(default: false)。
+   */
+  phoneMock?: boolean;
 };
 
 /** スライド表示用の完全な HTML ドキュメントを返す。 */
@@ -85,6 +90,22 @@ export async function renderSlideDocument(
     }</a>`
     : "";
 
+  const viewer =
+    `<zen-slide-viewer${autoplayAttr}><div class="zen-track">${pagesHtml}</div></zen-slide-viewer>${reactionLayer}`;
+  // phone モックアップはランディングの演出だけ。閲覧・発表ページは全画面。
+  const stage = input.phoneMock
+    ? `<div class="zen-stage">
+<div class="mockup-phone">
+<div class="mockup-phone-camera"></div>
+<div class="mockup-phone-display">
+${viewer}
+</div>
+</div>
+</div>`
+    : `<div class="zen-screen">
+${viewer}
+</div>`;
+
   return `<!doctype html>
 <html lang="ja" data-theme="${escapeHtml(theme)}">
 <head>
@@ -95,14 +116,7 @@ export async function renderSlideDocument(
 <style>${sanitizeCss(input.css ?? "")}</style>
 </head>
 <body>
-<div class="zen-stage">
-<div class="mockup-phone">
-<div class="mockup-phone-camera"></div>
-<div class="mockup-phone-display">
-<zen-slide-viewer${autoplayAttr}><div class="zen-track">${pagesHtml}</div></zen-slide-viewer>${reactionLayer}
-</div>
-</div>
-</div>${postViewer}${moderatorUi}${cta}
+${stage}${postViewer}${moderatorUi}${cta}
 <script type="application/json" id="zen-slide-data">${data}</script>${talkScript}${timelineScript}
 <script type="module" src="${clientScript}"></script>
 </body>
