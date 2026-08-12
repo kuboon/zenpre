@@ -1,5 +1,9 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
-import { renderSlides } from "./render.ts";
+import {
+  loadedShikiLanguages,
+  renderSlides,
+  SHIKI_LANGUAGES,
+} from "./render.ts";
 
 Deno.test("splits pages on top-level '---' and numbers from 1", async () => {
   const md = "# One\n\ntext a\n\n---\n\n## Two\n\ntext b";
@@ -62,6 +66,37 @@ Deno.test("renders mermaid blocks to inline SVG", async () => {
   assertStringIncludes(pages[0], "<svg");
   // must NOT be left as a highlighted code block
   assert(!pages[0].includes("language-mermaid"));
+});
+
+Deno.test("shiki: 宣言した言語がすべて読み込まれている(リストのずれ検知)", async () => {
+  // 実際に読み込まれた文法と、公開している一覧が一致していること。
+  // (LANG_IMPORTS はリテラル指定が必須なので二重管理になりやすい)
+  await renderSlides("# H\n\n```ts\nconst x = 1;\n```\n");
+  const loaded = new Set(await loadedShikiLanguages());
+  for (const lang of SHIKI_LANGUAGES) {
+    assert(loaded.has(lang), `declared but not loaded: ${lang}`);
+  }
+});
+
+Deno.test("shiki: 未対応の言語・テーマでも例外にしない", async () => {
+  // 同梱していない言語 → プレーン表示にフォールバック
+  const unknownLang = await renderSlides("# H\n\n```brainfuck\n+++\n```\n");
+  assertStringIncludes(unknownLang.pages[0], "+++");
+  // 同梱していないテーマ → 既定テーマにフォールバック
+  const unknownTheme = await renderSlides("# H\n\n```js\nconst x = 1;\n```\n", {
+    theme: "synthwave",
+  });
+  assertStringIncludes(unknownTheme.pages[0], "shiki");
+});
+
+Deno.test("mermaid SVG has no remote @import (stays self-contained under CSP)", async () => {
+  const md = "# Diagram\n\n```mermaid\nflowchart TD\n  A --> B\n```\n";
+  const { pages } = await renderSlides(md);
+  assertStringIncludes(pages[0], "<svg");
+  // beautiful-mermaid embeds a Google Fonts @import; it must be stripped so the
+  // viewer makes no third-party request (and the host CSP stays clean).
+  assert(!pages[0].includes("fonts.googleapis.com"));
+  assert(!/@import\s+url\(\s*['"]?https?:/i.test(pages[0]));
 });
 
 Deno.test("zen-html fence emits a sandboxed iframe (no same-origin, blocks network)", async () => {

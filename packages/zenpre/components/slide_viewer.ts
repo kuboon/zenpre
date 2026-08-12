@@ -29,6 +29,12 @@ export type SlideData = {
   css?: string;
   /** daisyUI theme 名(あれば `data-theme` に反映)。 */
   theme?: string;
+  /**
+   * コードハイライト(shiki)のテーマ名。省略時は shiki の既定。
+   * daisyUI の {@link SlideData.theme} とは**別物**なので混同しないこと
+   * (`synthwave` 等は shiki のテーマではなく、渡すと例外になる)。
+   */
+  codeTheme?: string;
   /** 自動再生する場合の 1 ページあたりの表示時間(ms)。 */
   autoplayMs?: number;
 };
@@ -104,8 +110,13 @@ export class ZenSlideViewer extends HTMLElement {
     }
     if (data.markdown !== undefined) {
       // renderSlides は unified/shiki/mermaid を伴うので必要時だけ動的 import。
+      // shiki には codeTheme のみ渡す(daisyUI の theme を渡すと shiki が
+      // 未知テーマとして throw する)。SSR の renderSlideDocument と同じ挙動。
       return import("../render.ts").then(({ renderSlides }) =>
-        renderSlides(data.markdown as string, { theme: data.theme })
+        renderSlides(
+          data.markdown as string,
+          data.codeTheme ? { theme: data.codeTheme } : {},
+        )
       ).then((r) => this.#build(r.pages, data.css));
     }
   }

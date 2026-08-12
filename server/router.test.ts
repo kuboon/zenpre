@@ -31,6 +31,49 @@ Deno.test("GET / is the Player-driven intro deck (dogfooding)", async () => {
   assertStringIncludes(html, "ZenPre");
 });
 
+Deno.test("phone mock is landing-only; other pages are fullscreen", async () => {
+  const router = app();
+  const home = await (await router.fetch(new Request("http://x/"))).text();
+  // ランディングだけ phone モックアップの演出を出す
+  assertStringIncludes(home, "mockup-phone");
+
+  const created = await (await router.fetch(
+    new Request("http://x/api/slides", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ markdown: "# Hi" }),
+    }),
+  )).json();
+  const slide = await (await router.fetch(
+    new Request(`http://x/s/${created.slide_id}`),
+  )).text();
+  assert(!slide.includes("mockup-phone"));
+  assertStringIncludes(slide, 'class="zen-screen"');
+});
+
+Deno.test("GET / links to the editor (動線)", async () => {
+  const res = await app().fetch(new Request("http://x/"));
+  const html = await res.text();
+  assertStringIncludes(html, '<a class="zen-cta" href="/new"');
+});
+
+Deno.test("GET /new is the markdown editor with live preview", async () => {
+  const res = await app().fetch(new Request("http://x/new"));
+  assertEquals(res.status, 200);
+  assertStringIncludes(res.headers.get("content-type") ?? "", "text/html");
+  const html = await res.text();
+  // textarea (input) + viewer (live preview) + create button
+  assertStringIncludes(html, 'id="zen-md"');
+  assertStringIncludes(html, "<zen-slide-viewer></zen-slide-viewer>");
+  assertStringIncludes(html, 'id="zen-create"');
+  assertStringIncludes(html, "/new.js");
+  // the preview is client-rendered: no SSR pages baked in
+  assert(!html.includes('class="zen-page"'));
+  // プレビューは枠を持たない(phone モックも固定比率の枠も付けない)
+  assert(!html.includes("mockup-phone"));
+  assert(!html.includes("zen-preview-frame"));
+});
+
 Deno.test("POST /api/slides creates and returns id + key", async () => {
   const router = app();
   const res = await router.fetch(
