@@ -13,6 +13,7 @@ const CLIENT_ENTRIES = [
   "moderate.ts",
   "replay.ts",
   "home.ts",
+  "new.ts",
 ] as const;
 
 export async function buildJs(

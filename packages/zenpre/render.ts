@@ -66,6 +66,21 @@ function textOf(node: Element): string {
 }
 
 /**
+ * 生成物から外部 URL の `@import`(webfont 等)を取り除く。
+ *
+ * beautiful-mermaid は SVG の `<style>` に Google Fonts の `@import` を埋める。
+ * そのままだと閲覧者のブラウザが第三者へリクエストしてしまい、スライド由来の
+ * 外向き通信を禁じる CSP(server/app.ts)にも弾かれてコンソールが汚れる。
+ * 図はローカルフォントにフォールバックさせ、出力を自己完結させる。
+ */
+function stripRemoteImports(css: string): string {
+  return css.replace(
+    /@import\s+url\(\s*['"]?https?:\/\/[^)]*\)\s*;?/gi,
+    "",
+  );
+}
+
+/**
  * ` ```mermaid ` コードブロック(hast の `<pre><code class="language-mermaid">`)
  * を beautiful-mermaid の SVG に置換する rehype プラグイン。
  * shiki より前に適用して、mermaid が未知言語として shiki に渡らないようにする。
@@ -84,7 +99,7 @@ function rehypeMermaid() {
       }
       let svg: string;
       try {
-        svg = renderMermaidSVG(textOf(code));
+        svg = stripRemoteImports(renderMermaidSVG(textOf(code)));
       } catch {
         return; // レンダリング失敗時は元のコードブロックを残す
       }

@@ -27,6 +27,8 @@ export type SlideDocInput = {
   talk?: { talk_id: string; role: "audience" | "presenter" | "moderator" };
   /** 埋め込み固定 timeline(Player で再生する。reaction layer も出す)。 */
   timeline?: TimelineEntry[];
+  /** 画面右上に出す導線リンク(トップページから `/new` へ、等)。 */
+  cta?: { href: string; label: string };
 };
 
 /** スライド表示用の完全な HTML ドキュメントを返す。 */
@@ -77,6 +79,11 @@ export async function renderSlideDocument(
   const moderatorUi = talkRole === "presenter" || talkRole === "moderator"
     ? "\n<zen-moderator-ui></zen-moderator-ui>"
     : "";
+  const cta = input.cta
+    ? `\n<a class="zen-cta" href="${escapeHtml(input.cta.href)}">${
+      escapeHtml(input.cta.label)
+    }</a>`
+    : "";
 
   return `<!doctype html>
 <html lang="ja" data-theme="${escapeHtml(theme)}">
@@ -95,7 +102,7 @@ export async function renderSlideDocument(
 <zen-slide-viewer${autoplayAttr}><div class="zen-track">${pagesHtml}</div></zen-slide-viewer>${reactionLayer}
 </div>
 </div>
-</div>${postViewer}${moderatorUi}
+</div>${postViewer}${moderatorUi}${cta}
 <script type="application/json" id="zen-slide-data">${data}</script>${talkScript}${timelineScript}
 <script type="module" src="${clientScript}"></script>
 </body>

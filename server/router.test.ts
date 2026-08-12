@@ -31,6 +31,26 @@ Deno.test("GET / is the Player-driven intro deck (dogfooding)", async () => {
   assertStringIncludes(html, "ZenPre");
 });
 
+Deno.test("GET / links to the editor (動線)", async () => {
+  const res = await app().fetch(new Request("http://x/"));
+  const html = await res.text();
+  assertStringIncludes(html, '<a class="zen-cta" href="/new"');
+});
+
+Deno.test("GET /new is the markdown editor with live preview", async () => {
+  const res = await app().fetch(new Request("http://x/new"));
+  assertEquals(res.status, 200);
+  assertStringIncludes(res.headers.get("content-type") ?? "", "text/html");
+  const html = await res.text();
+  // textarea (input) + viewer (live preview) + create button
+  assertStringIncludes(html, 'id="zen-md"');
+  assertStringIncludes(html, "<zen-slide-viewer></zen-slide-viewer>");
+  assertStringIncludes(html, 'id="zen-create"');
+  assertStringIncludes(html, "/new.js");
+  // the preview is client-rendered: no SSR pages baked in
+  assert(!html.includes('class="zen-page"'));
+});
+
 Deno.test("POST /api/slides creates and returns id + key", async () => {
   const router = app();
   const res = await router.fetch(

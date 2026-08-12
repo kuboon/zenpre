@@ -22,6 +22,7 @@ export const homeAction = {
       theme: INTRO_THEME,
       timeline: INTRO_TIMELINE,
       clientScript: "/home.js",
+      cta: { href: "/new", label: "スライドを作る" },
     });
     return new Response(doc, {
       headers: { "content-type": "text/html; charset=utf-8" },

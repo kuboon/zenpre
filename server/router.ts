@@ -10,6 +10,7 @@ import { createRouter, type Router } from "@remix-run/fetch-router";
 import { staticFiles } from "@remix-run/static-middleware";
 
 import { homeAction } from "./controllers/home.ts";
+import { newPageAction } from "./controllers/new_page.ts";
 import { slidePageAction } from "./controllers/slide_page.ts";
 import {
   slideGetAction,
@@ -44,6 +45,7 @@ export function makeRouter(deps: RouterDeps): Router {
   });
 
   router.get(routes.home, homeAction);
+  router.get(routes.newPage, newPageAction);
   router.get(routes.slidePage, slidePageAction(slides));
   router.get(routes.talkPage, talkPageAction(talks, slides));
   router.get(routes.talkPresent, talkPresentAction(talks, slides));

