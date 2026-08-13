@@ -26,7 +26,6 @@ import { createHighlighterCore, type HighlighterCore } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import { toHtml } from "hast-util-to-html";
 import { visit } from "unist-util-visit";
-import { renderMermaidSVG } from "beautiful-mermaid";
 import { sandboxedHtmlFrame } from "./sandbox.ts";
 import type { Element, Root, RootContent } from "hast";
 
@@ -100,24 +99,106 @@ const THEME_IMPORTS = [
   import("shiki/themes/github-light.mjs"),
   import("shiki/themes/github-dark.mjs"),
 ];
-const LANG_IMPORTS = [
-  import("shiki/langs/typescript.mjs"),
-  import("shiki/langs/javascript.mjs"),
-  import("shiki/langs/tsx.mjs"),
-  import("shiki/langs/jsx.mjs"),
-  import("shiki/langs/json.mjs"),
-  import("shiki/langs/yaml.mjs"),
-  import("shiki/langs/toml.mjs"),
-  import("shiki/langs/html.mjs"),
-  import("shiki/langs/css.mjs"),
-  import("shiki/langs/markdown.mjs"),
-  import("shiki/langs/shellscript.mjs"),
-  import("shiki/langs/python.mjs"),
-  import("shiki/langs/go.mjs"),
-  import("shiki/langs/rust.mjs"),
-  import("shiki/langs/sql.mjs"),
-  import("shiki/langs/diff.mjs"),
-];
+/**
+ * 文法は**デッキに出てくる言語だけ**を読む。値は arrow で包んで遅延させる
+ * (配列で即 import すると 16 言語すべてが読み込まれてしまう)。
+ */
+// deno-lint-ignore no-explicit-any
+type LangModule = any;
+const LANG_LOADERS: Record<string, () => Promise<LangModule>> = {
+  typescript: () => import("shiki/langs/typescript.mjs"),
+  javascript: () => import("shiki/langs/javascript.mjs"),
+  tsx: () => import("shiki/langs/tsx.mjs"),
+  jsx: () => import("shiki/langs/jsx.mjs"),
+  json: () => import("shiki/langs/json.mjs"),
+  yaml: () => import("shiki/langs/yaml.mjs"),
+  toml: () => import("shiki/langs/toml.mjs"),
+  html: () => import("shiki/langs/html.mjs"),
+  css: () => import("shiki/langs/css.mjs"),
+  markdown: () => import("shiki/langs/markdown.mjs"),
+  shellscript: () => import("shiki/langs/shellscript.mjs"),
+  python: () => import("shiki/langs/python.mjs"),
+  go: () => import("shiki/langs/go.mjs"),
+  rust: () => import("shiki/langs/rust.mjs"),
+  sql: () => import("shiki/langs/sql.mjs"),
+  diff: () => import("shiki/langs/diff.mjs"),
+};
+
+/** フェンスの info string(別名込み)→ {@link LANG_LOADERS} のキー。 */
+const LANG_ALIASES: Record<string, string> = {
+  ts: "typescript",
+  typescript: "typescript",
+  js: "javascript",
+  javascript: "javascript",
+  mjs: "javascript",
+  cjs: "javascript",
+  tsx: "tsx",
+  jsx: "jsx",
+  json: "json",
+  jsonc: "json",
+  yaml: "yaml",
+  yml: "yaml",
+  toml: "toml",
+  html: "html",
+  css: "css",
+  md: "markdown",
+  markdown: "markdown",
+  sh: "shellscript",
+  bash: "shellscript",
+  zsh: "shellscript",
+  shell: "shellscript",
+  shellscript: "shellscript",
+  py: "python",
+  python: "python",
+  go: "go",
+  golang: "go",
+  rs: "rust",
+  rust: "rust",
+  sql: "sql",
+  diff: "diff",
+  patch: "diff",
+};
+
+/**
+ * markdown からコードフェンスの info string を拾う。多めに拾っても
+ * (入れ子のフェンス等)余分な文法を 1 つ読むだけで害はない。
+ */
+function scanFenceLanguages(markdown: string): Set<string> {
+  const langs = new Set<string>();
+  for (
+    const m of markdown.matchAll(
+      /^[ \t]{0,3}(?:`{3,}|~{3,})[ \t]*([A-Za-z0-9_+#-]+)/gm,
+    )
+  ) {
+    langs.add(m[1].toLowerCase());
+  }
+  return langs;
+}
+
+/** デッキで使われている言語の文法だけを highlighter に読み込ませる。 */
+async function ensureLanguages(fences: Set<string>): Promise<void> {
+  const hl = await getHighlighter();
+  const loaded = new Set(hl.getLoadedLanguages());
+  const wanted = new Set<string>();
+  for (const f of fences) {
+    const g = LANG_ALIASES[f];
+    if (g && !loaded.has(g)) wanted.add(g);
+  }
+  if (wanted.size === 0) return;
+  const mods = await Promise.all([...wanted].map((g) => LANG_LOADERS[g]()));
+  await hl.loadLanguage(...mods);
+}
+
+/**
+ * beautiful-mermaid は ~3.8MB と大きいので、図のあるデッキでだけ読み込む。
+ * (静的 import にすると図が無くても必ずバンドル/取得されてしまう)
+ */
+let mermaidPromise:
+  | Promise<{ renderMermaidSVG: (src: string) => string }>
+  | undefined;
+function loadMermaid(): Promise<{ renderMermaidSVG: (src: string) => string }> {
+  return (mermaidPromise ??= import("beautiful-mermaid"));
+}
 
 /** 生成コストが高いので 1 度だけ作って使い回す。 */
 let highlighterPromise: Promise<HighlighterCore> | undefined;
@@ -134,7 +215,8 @@ export async function loadedShikiLanguages(): Promise<string[]> {
 function getHighlighter(): Promise<HighlighterCore> {
   highlighterPromise ??= createHighlighterCore({
     themes: THEME_IMPORTS,
-    langs: LANG_IMPORTS,
+    // 文法は ensureLanguages() が必要な分だけ後から読み込む。
+    langs: [],
     // oniguruma(wasm)ではなく JS の RegExp エンジンを使い、wasm を載せない。
     engine: createJavaScriptRegexEngine({ forgiving: true }),
   });
@@ -172,7 +254,7 @@ function stripRemoteImports(svg: string): string {
  * を beautiful-mermaid の SVG に置換する rehype プラグイン。
  * shiki より前に適用して、mermaid が未知言語として shiki に渡らないようにする。
  */
-function rehypeMermaid() {
+function rehypeMermaid(render: (src: string) => string) {
   return (tree: Root) => {
     visit(tree, "element", (node, index, parent) => {
       if (node.tagName !== "pre" || index === undefined || !parent) return;
@@ -186,7 +268,7 @@ function rehypeMermaid() {
       }
       let svg: string;
       try {
-        svg = stripRemoteImports(renderMermaidSVG(textOf(code)));
+        svg = stripRemoteImports(render(textOf(code)));
       } catch {
         return; // レンダリング失敗時は元のコードブロックを残す
       }
@@ -242,12 +324,21 @@ export async function renderSlides(
   markdown: string,
   opts: RenderOptions = {},
 ): Promise<RenderedSlide> {
+  // デッキに出てくるフェンスだけを見て、必要な文法と mermaid を用意する。
+  // (どちらも重いので、使われていなければ読み込み自体を行わない)
+  const fences = scanFenceLanguages(markdown);
+  const [mermaid] = await Promise.all([
+    fences.has("mermaid") ? loadMermaid() : Promise.resolve(null),
+    ensureLanguages(fences),
+  ]);
+
   const processor = unified()
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkFrontmatter, ["yaml"])
-    .use(remarkRehype)
-    .use(rehypeMermaid)
+    .use(remarkRehype);
+  if (mermaid) processor.use(rehypeMermaid, mermaid.renderMermaidSVG);
+  processor
     .use(rehypeHtmlSandbox)
     .use(rehypeShikiFromHighlighter, await getHighlighter(), {
       theme: SHIKI_THEMES.includes(opts.theme as typeof SHIKI_THEMES[number])
