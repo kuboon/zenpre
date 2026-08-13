@@ -68,14 +68,41 @@ Deno.test("renders mermaid blocks to inline SVG", async () => {
   assert(!pages[0].includes("language-mermaid"));
 });
 
-Deno.test("shiki: 宣言した言語がすべて読み込まれている(リストのずれ検知)", async () => {
-  // 実際に読み込まれた文法と、公開している一覧が一致していること。
-  // (LANG_IMPORTS はリテラル指定が必須なので二重管理になりやすい)
-  await renderSlides("# H\n\n```ts\nconst x = 1;\n```\n");
+Deno.test("shiki: 宣言した言語はすべて読み込めてハイライトされる", async () => {
+  // 全言語のフェンスを 1 つのデッキに入れて、宣言 → ローダ → 実描画が
+  // すべて繋がっていることを確かめる(二重管理のずれ検知)。
+  const deck = SHIKI_LANGUAGES.map((l) => `\`\`\`${l}\nx\n\`\`\``).join("\n\n");
+  const { pages } = await renderSlides(`# All\n\n${deck}\n`);
   const loaded = new Set(await loadedShikiLanguages());
   for (const lang of SHIKI_LANGUAGES) {
     assert(loaded.has(lang), `declared but not loaded: ${lang}`);
   }
+  assertStringIncludes(pages[0], "shiki");
+});
+
+Deno.test("shiki: デッキに出てくる言語だけ読み込む(遅延ロード)", async () => {
+  // highlighter はモジュールレベルの singleton なので、状態を汚さないよう
+  // 別 URL で新しいモジュールインスタンスを読む。
+  const fresh = await import("./render.ts?lazy-lang");
+  await fresh.renderSlides("# H\n\n```ts\nconst x = 1;\n```\n");
+  const loaded = await fresh.loadedShikiLanguages();
+  assert(loaded.includes("typescript"), `ts should load: ${loaded}`);
+  assert(!loaded.includes("python"), `python must stay unloaded: ${loaded}`);
+  assert(!loaded.includes("rust"), `rust must stay unloaded: ${loaded}`);
+});
+
+Deno.test("mermaid: 図のあるデッキでだけ読み込む(遅延ロード)", async () => {
+  // 図が無いデッキは mermaid を読み込まないまま描画できる。
+  const noDiagram = await import("./render.ts?lazy-mermaid");
+  const plain = await noDiagram.renderSlides("# H\n\ntext only\n");
+  assertStringIncludes(plain.pages[0], "text only");
+  assert(!plain.pages[0].includes("zen-mermaid"));
+  // 図があれば従来どおり SVG になる。
+  const withDiagram = await noDiagram.renderSlides(
+    "# H\n\n```mermaid\nflowchart LR\n  A --> B\n```\n",
+  );
+  assertStringIncludes(withDiagram.pages[0], "zen-mermaid");
+  assertStringIncludes(withDiagram.pages[0], "<svg");
 });
 
 Deno.test("shiki: 未対応の言語・テーマでも例外にしない", async () => {
