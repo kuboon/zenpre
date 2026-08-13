@@ -35,8 +35,11 @@
       <zen-slide-viewer></zen-slide-viewer>
       <zen-reaction-layer></zen-reaction-layer>
     </div>
-    <zen-post-viewer data-role="audience"></zen-post-viewer>
-    <div class="zen-reaction-bar" id="bar"></div>
+    <!-- 画面下部のドック: 投稿一覧とリアクションバーを縦に積む -->
+    <div class="zen-dock">
+      <zen-post-viewer data-role="audience"></zen-post-viewer>
+      <div class="zen-reaction-bar" id="bar"></div>
+    </div>
     <button type="button" id="install" class="btn btn-sm zen-install">
       ホーム画面に追加
     </button>

@@ -7,7 +7,7 @@ import { Player } from "@kuboon/zenpre/player.ts";
 import type { Action, TimelineEntry } from "@kuboon/zenpre/schemas.ts";
 import type { ZenSlideViewer } from "@kuboon/zenpre/components/slide_viewer.ts";
 import type { ZenReactionLayer } from "@kuboon/zenpre/components/reaction_layer.ts";
-import { defineComponents, readTalkData } from "./relay_ui.ts";
+import { defineComponents, dockOrBody, readTalkData } from "./relay_ui.ts";
 
 defineComponents();
 
@@ -51,7 +51,7 @@ async function buildControls(
   const time = document.createElement("span");
   time.className = "zen-player-time";
   bar.append(playBtn, seek, time);
-  document.body.appendChild(bar);
+  dockOrBody().appendChild(bar);
 
   if (entries.length === 0) {
     time.textContent = "記録なし";

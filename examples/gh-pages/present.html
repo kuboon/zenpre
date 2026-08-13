@@ -27,8 +27,11 @@
       <zen-slide-viewer></zen-slide-viewer>
       <zen-reaction-layer></zen-reaction-layer>
     </div>
-    <zen-post-viewer data-role="presenter"></zen-post-viewer>
-    <zen-moderator-ui></zen-moderator-ui>
+    <!-- 画面下部のドック: 承認待ち → 投稿一覧 の順に縦に積む -->
+    <div class="zen-dock">
+      <zen-moderator-ui></zen-moderator-ui>
+      <zen-post-viewer data-role="presenter"></zen-post-viewer>
+    </div>
 
     <script type="module">
       import { defineComponents } from "@kuboon/zenpre/components.ts";
