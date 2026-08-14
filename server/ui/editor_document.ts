@@ -1,11 +1,15 @@
 /**
- * `/new` — markdown エディタ(textarea + ライブプレビュー + 作成)の HTML。
+ * markdown エディタ(textarea + ライブプレビュー)の HTML。
+ *
+ * - `/new`          — 新規作成
+ * - `/s/:id/edit`   — 既存スライドの編集(作成後はここへ URL を差し替える)
  *
  * スライド本体のページ({@link renderSlideDocument})とは別レイアウトなので
  * 専用のドキュメントを組み立てる。プレビューは `<zen-slide-viewer>` に
  * `load({ markdown })` させるだけ(SSR しない)= 実際の閲覧画面と同じ描画経路。
  */
 import { escapeHtml } from "@kuboon/zenpre/sandbox.ts";
+import type { Slide } from "@kuboon/zenpre/schemas.ts";
 
 /** テーマ選択に出す daisyUI テーマ(assets/style.css の `@plugin daisyui` と対応)。 */
 export const EDITOR_THEMES = [
@@ -48,20 +52,32 @@ flowchart LR
 \`\`\`
 `;
 
-/** `/new` の完全な HTML ドキュメントを返す。 */
-export function renderEditorDocument(): string {
+/**
+ * エディタの完全な HTML ドキュメントを返す。
+ * `slide` を渡すと既存スライドの編集モード(`/s/:id/edit`)になる。
+ */
+export function renderEditorDocument(slide?: Slide): string {
+  const theme = slide?.theme ?? "light";
   const themeOptions = EDITOR_THEMES
     .map((t) =>
-      `<option value="${t}"${t === "light" ? " selected" : ""}>${t}</option>`
+      `<option value="${t}"${t === theme ? " selected" : ""}>${t}</option>`
     )
     .join("");
+  const markdown = slide?.markdown ?? SAMPLE_MARKDOWN;
+  const title = slide ? `${slide.title} を編集` : "新しいスライド";
+  // 編集対象をクライアントへ渡す(slide_key は localStorage 側で持つ)。
+  const editData = slide
+    ? `\n<script type="application/json" id="zen-edit-data">${
+      JSON.stringify({ slide_id: slide.slide_id }).replace(/</g, "\\u003c")
+    }</script>`
+    : "";
 
   return `<!doctype html>
 <html lang="ja" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>新しいスライド — ZenPre</title>
+<title>${escapeHtml(title)} — ZenPre</title>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -74,17 +90,19 @@ export function renderEditorDocument(): string {
         <select id="zen-theme" class="select select-xs">${themeOptions}</select>
       </label>
       <button type="button" id="zen-create" class="btn btn-primary btn-sm">
-        スライドを作成
+        ${slide ? "更新する" : "スライドを作成"}
       </button>
     </header>
     <textarea id="zen-md" class="zen-editor-input" spellcheck="false"
-      aria-label="markdown">${escapeHtml(SAMPLE_MARKDOWN)}</textarea>
+      aria-label="markdown">${escapeHtml(markdown)}</textarea>
     <output id="zen-result" class="zen-editor-result" hidden></output>
   </section>
-  <section class="zen-editor-preview" id="zen-preview" data-theme="light">
+  <section class="zen-editor-preview" id="zen-preview" data-theme="${
+    escapeHtml(theme)
+  }">
     <zen-slide-viewer></zen-slide-viewer>
   </section>
-</div>
+</div>${editData}
 <script type="module" src="/new.js"></script>
 </body>
 </html>`;

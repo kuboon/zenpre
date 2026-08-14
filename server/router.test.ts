@@ -74,6 +74,35 @@ Deno.test("GET /new is the markdown editor with live preview", async () => {
   assert(!html.includes("zen-preview-frame"));
 });
 
+Deno.test("GET /s/:id/edit は既存スライドを読み込んだエディタ", async () => {
+  const router = app();
+  const created = await (await router.fetch(
+    new Request("http://x/api/slides", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ markdown: "# 既存\n\nbody", theme: "dracula" }),
+    }),
+  )).json();
+
+  const res = await router.fetch(
+    new Request(`http://x/s/${created.slide_id}/edit`),
+  );
+  assertEquals(res.status, 200);
+  const html = await res.text();
+  // 既存の markdown / テーマが復元され、更新モードになっている
+  assertStringIncludes(html, "# 既存");
+  assertStringIncludes(html, '<option value="dracula" selected>');
+  assertStringIncludes(html, "更新する");
+  // 編集対象をクライアントへ渡している
+  assertStringIncludes(html, 'id="zen-edit-data"');
+  assertStringIncludes(html, created.slide_id);
+});
+
+Deno.test("GET /s/:id/edit 404 for unknown slide", async () => {
+  const res = await app().fetch(new Request("http://x/s/nosuch00/edit"));
+  assertEquals(res.status, 404);
+});
+
 Deno.test("POST /api/slides creates and returns id + key", async () => {
   const router = app();
   const res = await router.fetch(
