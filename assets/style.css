@@ -328,13 +328,48 @@ zen-slide-viewer .zen-focus {
   }
 }
 
-/* audience が押すリアクションバー(client 側で生成) */
-.zen-reaction-bar {
+/* ---- 画面下部のドック ------------------------------------------------- */
+/* 承認待ち(ModeratorUi)→ 投稿一覧(PostViewer)→ 各種バーの順に縦に積む。
+   個々を fixed で散らすと重なるので、1 本の列にまとめて管理する。 */
+
+.zen-dock {
   position: fixed;
-  bottom: max(1rem, env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
+  bottom: max(0.5rem, env(safe-area-inset-bottom));
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: min(94vw, 26rem);
+  max-height: min(70dvh, 40rem);
+  z-index: 55;
+  /* 隙間はスライド操作を邪魔しない。中身だけがクリックを受ける。 */
+  pointer-events: none;
+}
+
+.zen-dock > * {
+  pointer-events: auto;
+}
+
+/* ドックが無いページ(セルフホスト等)では、バー単体を画面下部中央に置く。 */
+body > .zen-reaction-bar,
+body > .zen-player-bar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 60;
+}
+
+body > .zen-player-bar {
+  width: min(90vw, 30rem);
+}
+
+/* audience が押すリアクションバー(client 側で生成) */
+.zen-reaction-bar {
+  display: flex;
+  align-self: center;
   gap: 0.25rem;
   padding: 0.35rem 0.5rem;
   border-radius: 9999px;
@@ -354,21 +389,18 @@ zen-slide-viewer .zen-focus {
 
 /* ---- PostViewer (<zen-post-viewer>) ----------------------------------- */
 
+/* ドック内(画面下部)に積まれる。位置はドック側が持つ。 */
 .zen-post-viewer {
-  position: fixed;
-  top: max(1rem, env(safe-area-inset-top));
-  right: max(0.5rem, env(safe-area-inset-right));
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  width: min(78vw, 20rem);
-  max-height: min(60dvh, 32rem);
+  min-height: 0;
+  max-height: min(40dvh, 22rem);
   padding: 0.5rem;
   border-radius: 0.75rem;
   background-color: color-mix(in oklch, var(--color-base-100) 90%, transparent);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
   color: var(--color-base-content);
-  z-index: 55;
 }
 
 .zen-post-list {
@@ -467,22 +499,19 @@ zen-slide-viewer .zen-focus {
 
 /* ---- ModeratorUi (<zen-moderator-ui>) --------------------------------- */
 
+/* ドック内(画面下部)に積まれる。承認待ちなので post 一覧より上に置く。 */
 .zen-moderator-ui {
-  position: fixed;
-  top: max(1rem, env(safe-area-inset-top));
-  left: max(0.5rem, env(safe-area-inset-left));
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  width: min(78vw, 20rem);
-  max-height: min(50dvh, 26rem);
+  min-height: 0;
+  max-height: min(30dvh, 18rem);
   padding: 0.5rem;
   border-radius: 0.75rem;
   background-color: color-mix(in oklch, var(--color-warning) 22%,
     var(--color-base-100));
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
   color: var(--color-base-content);
-  z-index: 56;
 }
 
 .zen-moderator-ui.zen-mod-empty {
@@ -543,15 +572,12 @@ zen-slide-viewer .zen-focus {
 }
 
 /* ---- Player の再生バー(replay ページ) -------------------------------- */
+/* ドックがあればその一番下、無ければ画面下部中央に単独で置く。 */
 .zen-player-bar {
-  position: fixed;
-  bottom: max(1rem, env(safe-area-inset-bottom));
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  width: min(90vw, 30rem);
+  width: 100%;
   padding: 0.4rem 0.75rem;
   border-radius: 9999px;
   background-color: color-mix(in oklch, var(--color-base-100) 88%, transparent);

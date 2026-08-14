@@ -91,6 +91,12 @@ export async function renderSlideDocument(
   const moderatorUi = talkRole === "presenter" || talkRole === "moderator"
     ? "\n<zen-moderator-ui></zen-moderator-ui>"
     : "";
+  // 画面下部のドック。承認待ち(moderator UI)→ 投稿一覧 → 各種バーの順に
+  // 縦に積む。client 側のリアクションバー/再生バーもここに追加される。
+  const dock = postViewer || moderatorUi
+    ? `\n<div class="zen-dock">${moderatorUi}${postViewer}\n</div>`
+    : "";
+
   const ctaHref = input.cta ? safeInternalHref(input.cta.href) : null;
   const cta = input.cta && ctaHref
     ? `\n<a class="zen-cta" href="${escapeHtml(ctaHref)}">${
@@ -124,7 +130,7 @@ ${viewer}
 <style>${sanitizeCss(input.css ?? "")}</style>
 </head>
 <body>
-${stage}${postViewer}${moderatorUi}${cta}
+${stage}${dock}${cta}
 <script type="application/json" id="zen-slide-data">${data}</script>${talkScript}${timelineScript}
 <script type="module" src="${clientScript}"></script>
 </body>

@@ -4,6 +4,7 @@ export const routes = route({
   home: get("/"),
   newPage: get("/new"),
   slidePage: get("/s/:slide_id"),
+  slideEdit: get("/s/:slide_id/edit"),
   talkPage: get("/t/:talk_id"),
   talkPresent: get("/t/:talk_id/present"),
   talkModerate: get("/t/:talk_id/moderate"),

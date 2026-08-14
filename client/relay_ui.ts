@@ -100,6 +100,14 @@ export function wirePostSending(
   });
 }
 
+/**
+ * 画面下部のドック(あれば)を返す。無ければ body。
+ * ドックに入れると承認待ち/投稿一覧と一緒に縦に積まれ、重ならない。
+ */
+export function dockOrBody(): HTMLElement {
+  return document.querySelector<HTMLElement>(".zen-dock") ?? document.body;
+}
+
 /** 画面下部にリアクションバーを追加する。 */
 export function reactionBar(onEmit: (emoji: string) => void): void {
   const bar = document.createElement("div");
@@ -112,5 +120,5 @@ export function reactionBar(onEmit: (emoji: string) => void): void {
     b.addEventListener("click", () => onEmit(emoji));
     bar.appendChild(b);
   }
-  document.body.appendChild(bar);
+  dockOrBody().appendChild(bar);
 }
