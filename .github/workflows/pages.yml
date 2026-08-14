@@ -1,0 +1,24 @@
+name: pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 再利用ワークフローは「呼び出し側」のトークン権限で動く。呼ばれた側の
+# permissions では広げられないので、ここで必ず付与すること。
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  pull-requests: write
+
+jobs:
+  pages:
+    uses: kuboon/workflows/.github/workflows/github-page-with-preview.yaml@main
+    with:
+      # examples/gh-pages はビルド不要の静的サイト(セルフホストの実例)。
+      # そのまま dist/ に複製するだけでよい。参照はすべて相対パスなので、
+      # PR プレビューのサブパス配下でもリンク・アセットが壊れない。
+      build-command: rm -rf dist && cp -r examples/gh-pages dist
+      dist-dir: dist
