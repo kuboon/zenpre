@@ -1,0 +1,43 @@
+name: publish
+
+on:
+  # v0.1.0 のようなタグを押すと公開する。
+  push:
+    tags: ["v*"]
+  # 手動実行(初回公開や、タグを打たずに出したいとき)。
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # JSR は OIDC でトークンレス認証する。これが無いと publish できない。
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Deno environment
+        uses: denoland/setup-deno@v2
+
+      # タグ経由のときは、タグと deno.json の version がずれていないか確かめる
+      # (ずれたまま publish すると、タグと公開版が食い違って追跡できなくなる)。
+      - name: Verify tag matches package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(jq -r .version packages/zenpre/deno.json)"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag v$tag と deno.json の version $pkg が一致しません"
+            exit 1
+          fi
+          echo "publishing @kuboon/zenpre@$pkg"
+
+      # 壊れた版を公開しないよう、CI と同じ検査を通してから出す。
+      - run: deno task check
+      - run: deno task test
+
+      # slow types を許容しているのは CI の dry-run と同じ理由(意図的)。
+      - name: Publish to JSR
+        run: deno publish --allow-slow-types
+        working-directory: packages/zenpre
