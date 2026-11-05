@@ -1,4 +1,5 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
+import { encodePlayCode } from "@kuboon/zenpre/play_code.ts";
 import { makeRouter } from "./router.ts";
 import { Slides } from "./repo/slides.ts";
 import { Talks } from "./repo/talks.ts";
@@ -527,4 +528,64 @@ Deno.test("localhost keeps http for card URLs", async () => {
     new Request(`http://localhost:8000/s/${created.slide_id}`),
   )).text();
   assertStringIncludes(html, 'content="http://localhost:8000/card.png"');
+});
+
+Deno.test("GET /s/:id?play=<code> autoplays the encoded recording", async () => {
+  const router = app();
+  const created = await (await router.fetch(
+    new Request("http://x/api/slides", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ markdown: "# A\n\n---\n\n# B" }),
+    }),
+  )).json();
+  const timeline = [
+    { t: 0, action: { type: "focus" as const, page: 1, idx: 0 } },
+    { t: 800, action: { type: "reaction" as const, emoji: "🎉" } },
+    { t: 1500, action: { type: "focus" as const, page: 2, idx: 0 } },
+  ];
+  const code = encodePlayCode(timeline);
+  const page = async (query: string) =>
+    await (await router.fetch(
+      new Request(`http://zenpre.example/s/${created.slide_id}${query}`),
+    )).text();
+
+  // play なし: 自動再生しない
+  const plain = await page("");
+  assert(!plain.includes('id="zen-timeline-data"'));
+
+  const html = await page(`?play=${code}&autoplay=1`);
+  assertStringIncludes(html, 'id="zen-timeline-data"');
+  assertStringIncludes(html, '"emoji":"🎉"');
+  assertStringIncludes(html, "<zen-reaction-layer>");
+  // X カードもこの録画のまま埋め込む(X が足すクエリは落とす)
+  assertStringIncludes(
+    html,
+    `<meta name="twitter:player" content="https://zenpre.example/s/${created.slide_id}?play=${code}">`,
+  );
+
+  // 壊れた play は無視して普通に表示する
+  const broken = await page("?play=1%21%21");
+  assertEquals(broken.includes('id="zen-timeline-data"'), false);
+  assertStringIncludes(
+    broken,
+    `<meta name="twitter:player" content="https://zenpre.example/s/${created.slide_id}">`,
+  );
+});
+
+Deno.test("GET /s/:id/edit has the recording UI", async () => {
+  const router = app();
+  const created = await (await router.fetch(
+    new Request("http://x/api/slides", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ markdown: "# A" }),
+    }),
+  )).json();
+  const html = await (await router.fetch(
+    new Request(`http://x/s/${created.slide_id}/edit`),
+  )).text();
+  assertStringIncludes(html, 'id="zen-rec"');
+  assertStringIncludes(html, 'id="zen-rec-bar"');
+  assertStringIncludes(html, "<zen-reaction-layer>");
 });

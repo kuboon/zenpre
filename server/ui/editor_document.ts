@@ -7,6 +7,10 @@
  * スライド本体のページ({@link renderSlideDocument})とは別レイアウトなので
  * 専用のドキュメントを組み立てる。プレビューは `<zen-slide-viewer>` に
  * `load({ markdown })` させるだけ(SSR しない)= 実際の閲覧画面と同じ描画経路。
+ *
+ * 「自動再生を録画」でプレビュー上の操作(ページ送り・見出しタップ・
+ * リアクション)を時刻つきで記録し、`/s/:id?play=<code>` の URL にできる
+ * (`client/recording.ts`。サーバには保存しない)。
  */
 import { escapeHtml } from "@kuboon/zenpre/sandbox.ts";
 import type { Slide } from "@kuboon/zenpre/schemas.ts";
@@ -89,6 +93,8 @@ export function renderEditorDocument(slide?: Slide): string {
         テーマ
         <select id="zen-theme" class="select select-xs">${themeOptions}</select>
       </label>
+      <button type="button" id="zen-rec" class="btn btn-sm" disabled
+        title="作成・更新したスライドで使えます">⏺ 自動再生を録画</button>
       <button type="button" id="zen-create" class="btn btn-primary btn-sm">
         ${slide ? "更新する" : "スライドを作成"}
       </button>
@@ -101,6 +107,8 @@ export function renderEditorDocument(slide?: Slide): string {
     escapeHtml(theme)
   }">
     <zen-slide-viewer></zen-slide-viewer>
+    <zen-reaction-layer></zen-reaction-layer>
+    <div id="zen-rec-bar" class="zen-rec-bar" hidden></div>
   </section>
 </div>${editData}
 <script type="module" src="/new.js"></script>

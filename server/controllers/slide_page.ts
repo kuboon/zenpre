@@ -9,10 +9,15 @@
  * X(Twitter)の Player Card にも対応する。このページ自身が `twitter:player`
  * になり、ポスト内の 480×480 の iframe でそのままめくれる。iframe 埋め込みを
  * 許すため `X-Frame-Options` / `frame-ancestors` は付けない。
+ *
+ * `?play=<code>`(エディタで録画した timeline、{@link decodePlayCode})が
+ * 付いていれば開いたときに自動再生する(`/slide.js`。操作したら止まる)。
+ * X のカードもこの URL のまま埋め込むので、カード内でも自動再生される。
  */
 import type { Action } from "@remix-run/fetch-router";
 import type { routes } from "../routes.ts";
 import type { Slides } from "../repo/slides.ts";
+import { decodePlayCode, encodePlayCode } from "@kuboon/zenpre/play_code.ts";
 import { renderSlideDocument } from "../ui/slide_document.ts";
 
 /**
@@ -44,14 +49,19 @@ export function slidePageAction(slides: Slides) {
       }
 
       const origin = publicOrigin(context.request);
-      // X が付け足すクエリ(?autoplay=1 等)はカードの URL に含めない。
-      const pageUrl = `${origin}/s/${encodeURIComponent(slide.slide_id)}`;
+      const play = new URL(context.request.url).searchParams.get("play");
+      const timeline = play ? decodePlayCode(play) : null;
+      // カードの URL には有効な play だけを正規化して残す(X が足すクエリ等は落とす)。
+      const pageUrl = `${origin}/s/${encodeURIComponent(slide.slide_id)}${
+        timeline ? `?play=${encodePlayCode(timeline)}` : ""
+      }`;
       const doc = await renderSlideDocument({
         title: slide.title,
         markdown: slide.markdown,
         css: slide.css,
         theme: slide.theme,
         pageCounter: true,
+        timeline: timeline ?? undefined,
         card: { url: pageUrl, image: `${origin}/card.png` },
       });
 

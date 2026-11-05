@@ -10,6 +10,9 @@
  */
 import { defineComponents } from "@kuboon/zenpre/components.ts";
 import type { ZenSlideViewer } from "@kuboon/zenpre/components/slide_viewer.ts";
+import type { ZenReactionLayer } from "@kuboon/zenpre/components/reaction_layer.ts";
+import { createShareButtons } from "@kuboon/share-element";
+import { setupRecording } from "./recording.ts";
 
 defineComponents();
 
@@ -23,6 +26,7 @@ const createBtn = document.getElementById("zen-create") as
 const preview = document.getElementById("zen-preview");
 const result = document.getElementById("zen-result");
 const viewer = document.querySelector<ZenSlideViewer>("zen-slide-viewer");
+const layer = document.querySelector<ZenReactionLayer>("zen-reaction-layer");
 
 /** 相対 URL を絶対 URL にして表示・コピーしやすくする。 */
 const abs = (path: string) => new URL(path, location.origin).toString();
@@ -30,19 +34,22 @@ const abs = (path: string) => new URL(path, location.origin).toString();
 /** localStorage に置く編集鍵のキー。 */
 const keyOf = (slideId: string) => `zen-slide-key:${slideId}`;
 
+type EditData = { slide_id: string };
+
 /** 編集中のスライド(`/s/:id/edit` で SSR が埋める)。新規なら null。 */
-function readEditData(): { slide_id: string } | null {
+function readEditData(): EditData | null {
   const el = document.getElementById("zen-edit-data");
   if (!el) return null;
   try {
-    return JSON.parse(el.textContent ?? "") as { slide_id: string };
+    return JSON.parse(el.textContent ?? "") as EditData;
   } catch {
     return null;
   }
 }
 
+const editData = readEditData();
 /** 編集対象。作成に成功したらここが埋まり、以後は更新モードになる。 */
-let editing = readEditData()?.slide_id ?? null;
+let editing = editData?.slide_id ?? null;
 
 /** 結果パネルにリンク行を足す。 */
 function addLink(label: string, href: string, note?: string): void {
@@ -98,6 +105,14 @@ if (md && viewer) {
   });
   void render();
 
+  // ---- 自動再生の録画 ---------------------------------------------------
+  const recording = setupRecording({
+    viewer,
+    layer,
+    md,
+    slideId: () => editing,
+  });
+
   // ---- テーマ(プレビュー枠のみ) ---------------------------------------
   themeSel?.addEventListener("change", () => {
     preview?.setAttribute("data-theme", themeSel.value);
@@ -118,6 +133,9 @@ if (md && viewer) {
     h.textContent = "スライドを作成しました";
     result.appendChild(h);
     addLink("スライドを開く", previewUrl);
+    const share = createShareButtons();
+    share.url = abs(previewUrl);
+    result.appendChild(share);
 
     // トークにすると相互配信(focus 追従・リアクション・質問)が使える。
     const talkBtn = document.createElement("button");
@@ -205,6 +223,7 @@ if (md && viewer) {
         history.replaceState(null, "", `/s/${slide.slide_id}/edit`);
         document.title = "スライドを編集 — ZenPre";
         showCreated(slide.slide_id, slide.slide_key, slide.preview_url);
+        recording.refresh();
       }
     } catch (e) {
       console.error(e);

@@ -3,6 +3,8 @@
   "specifiers": {
     "jsr:@deno/loader@0.5": "0.5.0",
     "jsr:@kuboon/kv@0.4": "0.4.0",
+    "jsr:@kuboon/qrcode-gen@0.1": "0.1.0",
+    "jsr:@kuboon/share-element@0.7": "0.7.0",
     "jsr:@kuboon/tailwindcss-deno@~0.1.7": "0.1.7",
     "jsr:@std/assert@^1.0.19": "1.0.19",
     "jsr:@std/encoding@^1.0.11": "1.0.11",
@@ -45,6 +47,15 @@
       "integrity": "4f4af25ad2631d131f572b30c40c5fa2010499191eea585255bffe569901555b",
       "dependencies": [
         "jsr:@std/ulid"
+      ]
+    },
+    "@kuboon/qrcode-gen@0.1.0": {
+      "integrity": "6d496db08a440a7cca5acad837b97f32b1f974cae83ad7c336c434cca2df5ed6"
+    },
+    "@kuboon/share-element@0.7.0": {
+      "integrity": "d6adbc027e34bf5a07767f5a6f0120202436696cab8d9acbca1c8255ed3cef0c",
+      "dependencies": [
+        "jsr:@kuboon/qrcode-gen"
       ]
     },
     "@kuboon/tailwindcss-deno@0.1.7": {
@@ -1174,6 +1185,7 @@
       },
       "client": {
         "dependencies": [
+          "jsr:@kuboon/share-element@0.7",
           "npm:@remix-run/component@^1.1.0"
         ]
       },
