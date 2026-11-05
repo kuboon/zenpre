@@ -180,11 +180,18 @@
 
 /* ---- トップページから /new への導線 ------------------------------------ */
 
-.zen-cta {
+.zen-ctas {
   position: fixed;
   top: max(0.75rem, env(safe-area-inset-top));
   right: max(0.75rem, env(safe-area-inset-right));
   z-index: 70;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.zen-cta {
   padding: 0.4rem 0.9rem;
   border-radius: 9999px;
   background-color: var(--color-primary);
@@ -193,6 +200,11 @@
   font-weight: 600;
   text-decoration: none;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+.zen-cta-sub {
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
 }
 
 /* ---- SlideViewer (<zen-slide-viewer>) ---------------------------------- */

@@ -21,6 +21,9 @@ const safeInternalHref = (href: string): string | null =>
 const sanitizeCss = (css: string): string =>
   css.replace(/<\/(style|script)/gi, "<\\/$1");
 
+/** 画面右上の導線リンク。href は同一サイト内のパスのみ。 */
+export type CtaLink = { href: string; label: string };
+
 export type SlideDocInput = {
   title: string;
   markdown: string;
@@ -34,8 +37,11 @@ export type SlideDocInput = {
   talk?: { talk_id: string; role: "audience" | "presenter" | "moderator" };
   /** 埋め込み固定 timeline(Player で再生する。reaction layer も出す)。 */
   timeline?: TimelineEntry[];
-  /** 画面右上に出す導線リンク(トップページから `/new` へ、等)。 */
-  cta?: { href: string; label: string };
+  /**
+   * 画面右上に出す導線リンク(トップページから `/new` へ、等)。複数渡すと
+   * 横に並べる。2 つ目以降は控えめな見た目(`zen-cta-sub`)になる。
+   */
+  cta?: CtaLink | CtaLink[];
   /**
    * phone モックアップの枠に入れて見せる。ランディングページ(`/`)の演出専用。
    * 実際に発表・閲覧するページは枠なしの全画面で表示する(default: false)。
@@ -97,11 +103,16 @@ export async function renderSlideDocument(
     ? `\n<div class="zen-dock">${moderatorUi}${postViewer}\n</div>`
     : "";
 
-  const ctaHref = input.cta ? safeInternalHref(input.cta.href) : null;
-  const cta = input.cta && ctaHref
-    ? `\n<a class="zen-cta" href="${escapeHtml(ctaHref)}">${
-      escapeHtml(input.cta.label)
-    }</a>`
+  const ctaLinks = (input.cta ? [input.cta].flat() : [])
+    .map((c) => ({ href: safeInternalHref(c.href), label: c.label }))
+    .filter((c): c is CtaLink => c.href !== null)
+    .map((c, i) =>
+      `<a class="zen-cta${i > 0 ? " zen-cta-sub" : ""}" href="${
+        escapeHtml(c.href)
+      }">${escapeHtml(c.label)}</a>`
+    );
+  const cta = ctaLinks.length
+    ? `\n<nav class="zen-ctas">${ctaLinks.join("")}</nav>`
     : "";
 
   const viewer =

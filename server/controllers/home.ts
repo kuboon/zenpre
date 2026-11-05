@@ -22,7 +22,11 @@ export const homeAction = {
       theme: INTRO_THEME,
       timeline: INTRO_TIMELINE,
       clientScript: "/home.js",
-      cta: { href: "/new", label: "スライドを作る" },
+      cta: [
+        { href: "/new", label: "スライドを作る" },
+        // スライドを作る AI 向けの仕様書(markdown のまま配信)。
+        { href: "/AGENTS.md", label: "AI 向けガイド" },
+      ],
       // ランディングだけ phone モックアップの中で再生して見せる。
       phoneMock: true,
     });

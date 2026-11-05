@@ -39,7 +39,11 @@ Deno.test("GET /AGENTS.md serves the AI authoring guide, linked from /", async (
   assertStringIncludes(await res.text(), "zen-html");
 
   const home = await (await router.fetch(new Request("http://x/"))).text();
-  assertStringIncludes(home, 'href="/AGENTS.md"');
+  // 画面右上の導線(デッキ本文とは別に常時表示)
+  assertStringIncludes(
+    home,
+    '<a class="zen-cta zen-cta-sub" href="/AGENTS.md">',
+  );
 });
 
 Deno.test("phone mock is landing-only; other pages are fullscreen", async () => {
