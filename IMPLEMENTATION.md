@@ -31,7 +31,7 @@
 | ------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | ランタイム         | Deno(package.json なし、`deno.json` のみ)                          | Deno Deploy にデプロイ                                                                                                          |
 | ライブラリ配布     | JSR `@kuboon/zenpre`                                               | フロント機能の大半(render / components / relay client / recorder / player)を提供                                                |
-| Web フレームワーク | Remix v3 (`@remix-run/fetch-router` + `@remix-run/ui`)             | [deno-remix-reference](https://github.com/kuboon/deno-remix-reference/tree/main/reference) の構成・バージョンピンをそのまま踏襲 |
+| Web フレームワーク | Remix v3 (`@remix-run/fetch-router` + `@remix-run/component`)      | [deno-remix-reference](https://github.com/kuboon/deno-remix-reference/tree/main/reference) の構成・バージョンピンをそのまま踏襲 |
 | 永続化             | Deno KV + [`jsr:@kuboon/kv`](https://jsr.io/@kuboon/kv)            | `KvRepo` 抽象に対して書き、本番 `denoKv.ts` / テスト `memory.ts` を差し替え                                                     |
 | リアルタイム       | WebSocket + `BroadcastChannel`                                     | [deno-pubsub](https://github.com/kuboon/deno-pubsub) の実装を参考にする(isolate 間配信 + 直近値の KV 保存)                      |
 | スキーマ検証       | arktype                                                            | Action・API 入出力を単一定義から共有                                                                                            |

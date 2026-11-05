@@ -22,8 +22,8 @@
     }
   },
   "imports": {
-    "daisyui": "npm:daisyui@^5.5.19",
-    "tailwindcss": "npm:tailwindcss@^4.1.18",
+    "daisyui": "npm:daisyui@^5.7.50",
+    "tailwindcss": "npm:tailwindcss@^4.3.4",
     "@tailwindcss/typography": "npm:@tailwindcss/typography@^0.5.16"
   },
   "nodeModulesDir": "auto",
@@ -31,6 +31,6 @@
   "exclude": ["examples/", "bundled/"],
   "compilerOptions": {
     "jsx": "react-jsx",
-    "jsxImportSource": "@remix-run/ui"
+    "jsxImportSource": "@remix-run/component"
   }
 }

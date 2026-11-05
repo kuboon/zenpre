@@ -5,10 +5,10 @@
  * `<script type="module" src="/mod.js">` で読み込む。
  *
  * `run()` は document を走査して `renderToStream` が埋めた clientEntry を
- * hydrate し、`<a rmx-target="content">` のクリックをフレーム差し替えに変える。
+ * hydrate し、`<a data-rmx-target="content">` のクリックをフレーム差し替えに変える。
  */
 
-import { run } from "@remix-run/ui";
+import { run } from "@remix-run/component";
 
 const FRAME_HEADER = "rmx-frame";
 
@@ -17,7 +17,8 @@ const app = run({
     const mod = await import(moduleUrl);
     return mod[exportName];
   },
-  async resolveFrame(src: string, signal?: AbortSignal, target?: string) {
+  async resolveFrame(src, options) {
+    const { signal, target } = options ?? {};
     const headers = new Headers({
       accept: "text/html",
       [FRAME_HEADER]: "1",
