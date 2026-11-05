@@ -3,6 +3,8 @@
 このドキュメントは、ZenPre でスライドを作成・公開する **AI エージェント向け**
 の仕様書です。人間向けの紹介はトップページ(`/`)を見てください。
 
+本番サーバ: **https://zenpre.heartrails.deno.net/**
+
 ZenPre は **`---` 区切りの markdown をそのままプレゼンにする** ツールです。
 markdown 1 本を渡せば、スマホ全画面の縦長スライドとして配信され、発表者の操作
 (ページ送り・見出しへのフォーカス)と客席のリアクションがリアルタイムに同期
@@ -231,9 +233,9 @@ markdown で表現できないもの(アニメーション、インタラクテ�
 
 ### Remote MCP(推奨)
 
-ZenPre サーバの **`/mcp`**(例: `https://zenpre.deno.dev/mcp`)が Remote MCP
-(Streamable HTTP、ステートレス)です。OAuth は不要で、認可は各ツール引数の
-秘密鍵(capability key)で行います。
+ZenPre サーバの **`/mcp`**(本番: `https://zenpre.heartrails.deno.net/mcp`)が
+Remote MCP (Streamable HTTP、ステートレス)です。OAuth
+は不要で、認可は各ツール引数の 秘密鍵(capability key)で行います。
 
 | ツール               | 引数                                                      | 返り値 / 用途                                                        |
 | -------------------- | --------------------------------------------------------- | -------------------------------------------------------------------- |
@@ -256,20 +258,20 @@ MCP が使えない環境では同等の REST API があります(CORS 全開放
 
 ```bash
 # 作成 → { slide_id, slide_key, preview_url }
-curl -X POST https://zenpre.deno.dev/api/slides \
+curl -X POST https://zenpre.heartrails.deno.net/api/slides \
   -H 'content-type: application/json' \
   -d '{"markdown":"# Hello\n\n---\n\n# World","theme":"dark"}'
 
 # 取得 → { slide_id, title, markdown, css, theme }
-curl https://zenpre.deno.dev/api/slides/SLIDE_ID
+curl https://zenpre.heartrails.deno.net/api/slides/SLIDE_ID
 
 # 更新(与えた項目だけ)
-curl -X PATCH https://zenpre.deno.dev/api/slides/SLIDE_ID \
+curl -X PATCH https://zenpre.heartrails.deno.net/api/slides/SLIDE_ID \
   -H 'content-type: application/json' -H 'x-slide-key: SLIDE_KEY' \
   -d '{"markdown":"# Updated"}'
 
 # トーク(発表枠)作成
-curl -X POST https://zenpre.deno.dev/api/talks \
+curl -X POST https://zenpre.heartrails.deno.net/api/talks \
   -H 'content-type: application/json' -H 'x-slide-key: SLIDE_KEY' \
   -d '{"slide_id":"SLIDE_ID","begin_at":"2026-12-01T10:00:00Z"}'
 ```

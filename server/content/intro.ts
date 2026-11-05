@@ -122,7 +122,7 @@ inside pages you already own.
 
 Just tell your AI:
 
-> I want to embed slides using https://zenpre.kbn.one/
+> I want to embed slides using https://zenpre.heartrails.deno.net/
 
 Try it now.
 `;
