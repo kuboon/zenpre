@@ -2,6 +2,7 @@ import { get, patch, post, put, route } from "@remix-run/fetch-router/routes";
 
 export const routes = route({
   home: get("/"),
+  agentsGuide: get("/AGENTS.md"),
   newPage: get("/new"),
   slidePage: get("/s/:slide_id"),
   slideEdit: get("/s/:slide_id/edit"),

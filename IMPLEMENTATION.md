@@ -31,7 +31,7 @@
 | ------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | ランタイム         | Deno(package.json なし、`deno.json` のみ)                          | Deno Deploy にデプロイ                                                                                                          |
 | ライブラリ配布     | JSR `@kuboon/zenpre`                                               | フロント機能の大半(render / components / relay client / recorder / player)を提供                                                |
-| Web フレームワーク | Remix v3 (`@remix-run/fetch-router` + `@remix-run/ui`)             | [deno-remix-reference](https://github.com/kuboon/deno-remix-reference/tree/main/reference) の構成・バージョンピンをそのまま踏襲 |
+| Web フレームワーク | Remix v3 (`@remix-run/fetch-router` + `@remix-run/component`)      | [deno-remix-reference](https://github.com/kuboon/deno-remix-reference/tree/main/reference) の構成・バージョンピンをそのまま踏襲 |
 | 永続化             | Deno KV + [`jsr:@kuboon/kv`](https://jsr.io/@kuboon/kv)            | `KvRepo` 抽象に対して書き、本番 `denoKv.ts` / テスト `memory.ts` を差し替え                                                     |
 | リアルタイム       | WebSocket + `BroadcastChannel`                                     | [deno-pubsub](https://github.com/kuboon/deno-pubsub) の実装を参考にする(isolate 間配信 + 直近値の KV 保存)                      |
 | スキーマ検証       | arktype                                                            | Action・API 入出力を単一定義から共有                                                                                            |
@@ -71,7 +71,7 @@ packages/
     recorder.ts player.ts
     moderators/
       blacklist.ts          # BlacklistModerator
-server/                     # zenpre.deno.dev 本体(@kuboon/zenpre に workspace 依存)
+server/                     # zenpre.heartrails.deno.net 本体(@kuboon/zenpre に workspace 依存)
   main.ts                   # Deno Deploy エントリ
   router.ts / routes.ts     # Remix v3 fetch-router
   controllers/              # ページ SSR + API ハンドラ
@@ -315,7 +315,7 @@ Origin を制限しない。REST API(§12)は CORS
 **再接続**(`packages/zenpre/relay_client.ts`): 指数バックオフで自動再接続。
 `new RelayClient({ server, talkId, key? })` の形で接続先 server URL を
 設定可能にする(本体サイトでは同一 origin、セルフホストでは
-`https://zenpre.deno.dev` を指定)。
+`https://zenpre.heartrails.deno.net` を指定)。
 
 ## 9. フロントエンドコンポーネント(packages/zenpre/components/)
 
@@ -415,7 +415,7 @@ GET   /api/talks/:talk_id/timeline   -> 全 chunk 結合(公開、end_at 後の�
 
 全 API に CORS(`Access-Control-Allow-Origin: *`)を付ける(§8 参照)。
 
-## 13. ページルーティング(本体サイト zenpre.deno.dev)
+## 13. ページルーティング(本体サイト zenpre.heartrails.deno.net)
 
 | path                         | 内容                                                        |
 | ---------------------------- | ----------------------------------------------------------- |
@@ -432,7 +432,8 @@ GET   /api/talks/:talk_id/timeline   -> 全 chunk 結合(公開、end_at 後の�
 ## 14. セルフホスト(GitHub Pages)
 
 ユーザが `@kuboon/zenpre` を組み込んだ静的サイト(GitHub Pages 等)を立ち上げ、
-zenpre.deno.dev は **relay(と必要なら talk 管理)だけ**を提供する構成。
+zenpre.heartrails.deno.net は **relay(と必要なら talk
+管理)だけ**を提供する構成。
 
 - `examples/gh-pages/` にテンプレートを置く。ビルド不要の 1 枚 HTML:
 
@@ -441,7 +442,7 @@ zenpre.deno.dev は **relay(と必要なら talk 管理)だけ**を提供する�
 import "https://esm.sh/jsr/@kuboon/zenpre/components.ts";
 const viewer = document.querySelector("zen-slide-viewer");
 viewer.load({ markdown: await (await fetch("./slides.md")).text() });
-viewer.connect({ server: "https://zenpre.deno.dev", talkId: "..." });
+viewer.connect({ server: "https://zenpre.heartrails.deno.net", talkId: "..." });
 </script>
 <zen-slide-viewer></zen-slide-viewer>
 ```
@@ -499,7 +500,7 @@ viewer.connect({ server: "https://zenpre.deno.dev", talkId: "..." });
 - **M6 — セルフホスト example + 仕上げ** `examples/gh-pages/`(slide_id なし
   talk + esm.sh import で動くことを実証)、 WebAudio
   の音種追加、PWA(a2hs)、パフォーマンス。 _DoD: example をそのまま GitHub Pages
-  に置いて zenpre.deno.dev の relay だけでプレゼンが成立する。_
+  に置いて zenpre.heartrails.deno.net の relay だけでプレゼンが成立する。_
 
 ## 17. 主要な設計判断の理由(要旨)
 

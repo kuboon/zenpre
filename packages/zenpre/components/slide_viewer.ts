@@ -43,7 +43,7 @@ export type SlideData = {
 export type TalkConnectOptions = {
   /** talk_id。 */
   talkId: string;
-  /** 接続先 relay の origin(default: 同一 origin。セルフホストは zenpre.deno.dev 等)。 */
+  /** 接続先 relay の origin(default: 同一 origin。セルフホストは zenpre.heartrails.deno.net 等)。 */
   server?: string;
   /** presenter/moderator の capability key(audience は省略)。 */
   key?: string;

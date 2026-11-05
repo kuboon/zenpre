@@ -2,9 +2,9 @@
   "compilerOptions": {
     "lib": ["dom", "es2024"],
     "jsx": "react-jsx",
-    "jsxImportSource": "@remix-run/ui"
+    "jsxImportSource": "@remix-run/component"
   },
   "imports": {
-    "@remix-run/ui": "npm:@remix-run/ui@^0.4.0"
+    "@remix-run/component": "npm:@remix-run/component@^1.1.0"
   }
 }

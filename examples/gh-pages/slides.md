@@ -10,7 +10,7 @@ markdown を置くだけのプレゼン
 
 - ビルド不要(esm.sh から読み込む)
 - スライド本文は自分のサイトの `slides.md`
-- リアルタイム同期だけ `zenpre.deno.dev` の relay を借りる
+- リアルタイム同期だけ `zenpre.heartrails.deno.net` の relay を借りる
 
 ---
 
@@ -30,7 +30,7 @@ markdown を置くだけのプレゼン
   defineComponents();
   const v = document.querySelector("zen-slide-viewer");
   await v.load({ markdown: await (await fetch("./slides.md")).text() });
-  v.connect({ server: "https://zenpre.deno.dev", talkId: "…" });
+  v.connect({ server: "https://zenpre.heartrails.deno.net", talkId: "…" });
 </script>
 ```
 

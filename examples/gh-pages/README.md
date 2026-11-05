@@ -2,7 +2,7 @@
 
 `@kuboon/zenpre` を組み込んだ **ビルド不要の静的サイト**。スライド本文
 (`slides.md`)は自分のサイトに置き、**リアルタイム同期だけ**を
-`zenpre.deno.dev` の relay に借りる構成です(PLAN §14)。
+`zenpre.heartrails.deno.net` の relay に借りる構成です(PLAN §14)。
 
 ```
 examples/gh-pages/
@@ -33,7 +33,7 @@ markdown・CSS は自サイトに置き、サーバの KV には保存しませ�
 `slide_id` なしのトークを 1 つ作成し、`talk_id` と鍵を控えます。
 
 ```sh
-curl -X POST https://zenpre.deno.dev/api/talks \
+curl -X POST https://zenpre.heartrails.deno.net/api/talks \
   -H 'content-type: application/json' -d '{}'
 # => { "talk_id": "...", "event_key": "...", "moderator_key": "...",
 #      "audience_url": "...", "presenter_url": "...", "moderator_url": "..." }

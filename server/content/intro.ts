@@ -99,6 +99,8 @@ Markdown and HTML are first-class. PowerPoint or PDF? Do we still need them?
 
 When an AI opens a slide URL, it can fetch the pure slide text directly.
 
+AI agents: read the [authoring guide](/AGENTS.md) first.
+
 ---
 
 # Mobile-native
@@ -120,7 +122,7 @@ inside pages you already own.
 
 Just tell your AI:
 
-> I want to embed slides using https://zenpre.kbn.one/
+> I want to embed slides using https://zenpre.heartrails.deno.net/
 
 Try it now.
 `;

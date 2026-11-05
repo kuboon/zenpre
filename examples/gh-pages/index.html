@@ -6,11 +6,11 @@
       host CSP: このページ自身からの外向き通信を許可先だけに絞る。
       author css の url()/@import beacon 等を封じる多層防御(HTML スライドの
       iframe は別途 srcdoc 内の厳格 CSP + sandbox で隔離される)。
-      esm.sh(ライブラリ)/ zenpre.deno.dev(CSS と relay wss)/ self(slides.md)を許可。
+      esm.sh(ライブラリ)/ zenpre.heartrails.deno.net(CSS と relay wss)/ self(slides.md)を許可。
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://esm.sh; style-src 'self' 'unsafe-inline' https://zenpre.deno.dev; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data: https://zenpre.deno.dev; connect-src 'self' https://esm.sh https://zenpre.deno.dev wss://zenpre.deno.dev; frame-src 'self'; object-src 'none'; base-uri 'none'"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://esm.sh; style-src 'self' 'unsafe-inline' https://zenpre.heartrails.deno.net; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data: https://zenpre.heartrails.deno.net; connect-src 'self' https://esm.sh https://zenpre.heartrails.deno.net wss://zenpre.heartrails.deno.net; frame-src 'self'; object-src 'none'; base-uri 'none'"
     />
     <meta
       name="viewport"
@@ -19,7 +19,7 @@
     <title>ZenPre — セルフホストデモ(客席)</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- Tailwind+daisyUI のビルド済み CSS は relay 本体サイトから借りる。 -->
-    <link rel="stylesheet" href="https://zenpre.deno.dev/style.css" />
+    <link rel="stylesheet" href="https://zenpre.heartrails.deno.net/style.css" />
     <script type="importmap">
       {
         "imports": {

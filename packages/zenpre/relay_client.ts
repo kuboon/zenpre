@@ -2,7 +2,7 @@
  * `RelayClient` — Talk の relay(WebSocket)に接続するクライアント。
  *
  * - 接続先 server は設定可能(本体サイトは同一 origin、セルフホストは
- *   `https://zenpre.deno.dev` を指定)。
+ *   `https://zenpre.heartrails.deno.net` を指定)。
  * - 指数バックオフで自動再接続し、接続/再接続のたびに `join` を送る。
  * - 受信 envelope({@link Down})を型付きコールバックに配る。
  *

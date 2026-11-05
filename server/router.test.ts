@@ -31,6 +31,17 @@ Deno.test("GET / is the Player-driven intro deck (dogfooding)", async () => {
   assertStringIncludes(html, "ZenPre");
 });
 
+Deno.test("GET /AGENTS.md serves the AI authoring guide, linked from /", async () => {
+  const router = app();
+  const res = await router.fetch(new Request("http://x/AGENTS.md"));
+  assertEquals(res.status, 200);
+  assertStringIncludes(res.headers.get("content-type") ?? "", "text/markdown");
+  assertStringIncludes(await res.text(), "zen-html");
+
+  const home = await (await router.fetch(new Request("http://x/"))).text();
+  assertStringIncludes(home, 'href="/AGENTS.md"');
+});
+
 Deno.test("phone mock is landing-only; other pages are fullscreen", async () => {
   const router = app();
   const home = await (await router.fetch(new Request("http://x/"))).text();
