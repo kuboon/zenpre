@@ -19,7 +19,7 @@
     "permissions": {
       "env": true,
       "net": ["localhost", "127.0.0.1", "0.0.0.0"],
-      "read": ["./AGENTS.md"]
+      "read": ["./AGENTS.md", "./assets/card.png"]
     }
   },
   "imports": {

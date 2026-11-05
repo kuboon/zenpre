@@ -464,3 +464,67 @@ Deno.test("GET /t/:id/replay renders the replay client", async () => {
   assertStringIncludes(html, "/replay.js");
   assertStringIncludes(html, "<zen-slide-viewer");
 });
+
+Deno.test("GET /s/:id is an X Player Card with a page counter", async () => {
+  const router = app();
+  const created = await (await router.fetch(
+    new Request("http://x/api/slides", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        markdown: "# Hello & <World>\n\n説明の本文\n\n---\n\n# 2\n\n---\n\n# 3",
+      }),
+    }),
+  )).json();
+  const res = await router.fetch(
+    new Request(`http://zenpre.example/s/${created.slide_id}?autoplay=1`),
+  );
+  assertEquals(res.status, 200);
+  assertEquals(res.headers.get("x-frame-options"), null);
+  const html = await res.text();
+  const url = `https://zenpre.example/s/${created.slide_id}`;
+  assertStringIncludes(html, '<meta name="twitter:card" content="player">');
+  assertStringIncludes(html, `<meta name="twitter:player" content="${url}">`);
+  assertStringIncludes(
+    html,
+    '<meta name="twitter:player:width" content="480">',
+  );
+  assertStringIncludes(
+    html,
+    '<meta name="twitter:player:height" content="480">',
+  );
+  assertStringIncludes(
+    html,
+    '<meta name="twitter:image" content="https://zenpre.example/card.png">',
+  );
+  assertStringIncludes(
+    html,
+    '<meta property="og:title" content="Hello &amp; &lt;World&gt;">',
+  );
+  assertStringIncludes(
+    html,
+    '<meta name="twitter:description" content="説明の本文">',
+  );
+  assertStringIncludes(html, 'class="zen-page-counter"');
+  assertStringIncludes(html, ">1 / 3</div>");
+
+  const img = await router.fetch(new Request("http://x/card.png"));
+  assertEquals(img.status, 200);
+  assertEquals(img.headers.get("content-type"), "image/png");
+  await img.body?.cancel();
+});
+
+Deno.test("localhost keeps http for card URLs", async () => {
+  const router = app();
+  const created = await (await router.fetch(
+    new Request("http://localhost/api/slides", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ markdown: "# Hi" }),
+    }),
+  )).json();
+  const html = await (await router.fetch(
+    new Request(`http://localhost:8000/s/${created.slide_id}`),
+  )).text();
+  assertStringIncludes(html, 'content="http://localhost:8000/card.png"');
+});
