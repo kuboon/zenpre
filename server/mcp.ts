@@ -15,10 +15,11 @@
  */
 import { type } from "arktype";
 import { genPublicId } from "@kuboon/zenpre/keys.ts";
+import { POST_TEXT_MAX_GRAPHEMES } from "@kuboon/zenpre/schemas.ts";
 import {
-  POST_TEXT_MAX_GRAPHEMES,
-  SlideTimelineSchema,
-} from "@kuboon/zenpre/schemas.ts";
+  encodePlayCode,
+  PLAY_CODE_MAX_ENTRIES,
+} from "@kuboon/zenpre/play_code.ts";
 import type { Slides } from "./repo/slides.ts";
 import type { Talks } from "./repo/talks.ts";
 import type { HubRegistry } from "./relay/hub.ts";
@@ -85,15 +86,13 @@ const TOOLS: ToolDef[] = [
   {
     name: "edit_slide",
     description:
-      "既存スライドを更新する。slide_key が必要。markdown/css/theme/timeline は与えたものだけ更新。" +
-      "timeline は自動再生用の [{ t: ミリ秒, action: { type: 'focus', page, idx } | { type: 'reaction', emoji } }]。[] で削除。",
+      "既存スライドを更新する。slide_key が必要。markdown/css/theme は与えたものだけ更新。",
     input: type({
       slide_id: "string",
       slide_key: "string",
       "markdown?": "string",
       "css?": "string",
       "theme?": "string",
-      "timeline?": SlideTimelineSchema,
     }),
     handler: async (args, { slides }) => {
       const { slide_id, slide_key, ...patch } = args;
@@ -101,6 +100,30 @@ const TOOLS: ToolDef[] = [
       if (result === "not_found") throw new ToolError("slide not found");
       if (result === "forbidden") throw new ToolError("invalid slide_key");
       return { ok: true, preview_url: `/s/${result.slide_id}` };
+    },
+  },
+  {
+    name: "make_play_url",
+    description: "自動再生する URL を作る(サーバには保存しない)。timeline は " +
+      "[{ t: 開始からのミリ秒, action: { type: 'focus', page, idx } | { type: 'reaction', emoji } }]。" +
+      "返る play_url を開くと(X のカード内でも)その通りにページ送りしてループする。",
+    input: type({
+      slide_id: "string",
+      timeline: type({
+        t: "number >= 0",
+        action: type({
+          type: "'focus'",
+          page: "number.integer >= 1",
+          idx: "number.integer >= 0",
+        }).or({ type: "'reaction'", emoji: "0 < string <= 16" }),
+      }).array().moreThanLength(0).atMostLength(PLAY_CODE_MAX_ENTRIES),
+    }),
+    handler: async (args, { slides }) => {
+      const slide = await slides.get(args.slide_id);
+      if (!slide) throw new ToolError("slide not found");
+      return {
+        play_url: `/s/${slide.slide_id}?play=${encodePlayCode(args.timeline)}`,
+      };
     },
   },
   {

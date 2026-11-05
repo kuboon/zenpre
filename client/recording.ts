@@ -1,20 +1,24 @@
 /**
  * エディタの「自動再生を録画」(`/s/:id/edit`)。
  *
- * プレビュー上の操作を {@link Recorder} で時刻つきに記録し、スライドの
- * `timeline` として `PATCH /api/slides/:id` で保存する。保存した timeline は
- * `/s/:id` を開いたときに自動再生される(`client/slide.ts`)。
+ * プレビュー上の操作を {@link Recorder} で時刻つきに記録し、play code
+ * ({@link encodePlayCode})にして `/s/:id?play=<code>` の URL を作る。
+ * サーバには何も保存しないので、録画は何本でも作れて編集鍵も要らない。
+ * その URL を開くと自動再生される(`client/slide.ts`)。
  *
  * 記録するもの:
  * - ページ送り(← → / スワイプ)→ `focus(page, 0)`
  * - 見出しのタップ → `focus(page, idx)`
  * - 録画バーのリアクションボタン → `reaction(emoji)`
  *
- * 流れ: 録画 → (3 秒カウントダウン)→ 操作 → 停止 → 確認再生 / 保存 / やり直し。
+ * 流れ: 録画 → (3 秒カウントダウン)→ 操作 → 停止 → 確認再生 /
+ * URL を共有(`<share-buttons>`)/ やり直し。
  */
+import { createShareButtons } from "@kuboon/share-element";
+import { encodePlayCode } from "@kuboon/zenpre/play_code.ts";
 import { Player } from "@kuboon/zenpre/player.ts";
 import { Recorder } from "@kuboon/zenpre/recorder.ts";
-import type { Action, SlideTimeline } from "@kuboon/zenpre/schemas.ts";
+import type { Action, TimelineEntry } from "@kuboon/zenpre/schemas.ts";
 import type { ZenSlideViewer } from "@kuboon/zenpre/components/slide_viewer.ts";
 import type { ZenReactionLayer } from "@kuboon/zenpre/components/reaction_layer.ts";
 import { REACTION_EMOJIS } from "./relay_ui.ts";
@@ -26,10 +30,8 @@ export type RecordingOptions = {
   layer: ZenReactionLayer | null;
   /** 録画中は markdown を編集させない(プレビューが作り直されるため)。 */
   md: HTMLTextAreaElement;
-  /** 保存先。作成前・鍵なしなら null(録画できない)。 */
-  target: () => { slideId: string; slideKey: string } | null;
-  /** 保存済みの timeline(編集ページを開いた時点)。 */
-  initial: SlideTimeline;
+  /** 録画先のスライド。作成前なら null(録画できない)。 */
+  slideId: () => string | null;
 };
 
 /** 1:05 のような表記。 */
@@ -39,7 +41,7 @@ export function fmtMs(ms: number): string {
 }
 
 /** timeline の長さ(最後のエントリの時刻)。 */
-const durationOf = (tl: SlideTimeline) => tl.length ? tl[tl.length - 1].t : 0;
+const durationOf = (tl: TimelineEntry[]) => tl.length ? tl[tl.length - 1].t : 0;
 
 const COUNTDOWN_SEC = 3;
 
@@ -47,15 +49,10 @@ const COUNTDOWN_SEC = 3;
 export function setupRecording(opts: RecordingOptions): { refresh(): void } {
   const { viewer, layer, md } = opts;
   const recBtn = document.getElementById("zen-rec") as HTMLButtonElement | null;
-  const status = document.getElementById("zen-rec-status");
   const bar = document.getElementById("zen-rec-bar");
-  if (!recBtn || !status || !bar) return { refresh() {} };
+  if (!recBtn || !bar) return { refresh() {} };
 
-  /** サーバに保存されている timeline。 */
-  let saved: SlideTimeline = opts.initial;
   let busy = false; // 録画中〜録画結果の確認中
-
-  // ---- ヘッダの状態表示 ------------------------------------------------
 
   const button = (label: string, onClick: () => void, cls = "btn btn-xs") => {
     const b = document.createElement("button");
@@ -66,38 +63,12 @@ export function setupRecording(opts: RecordingOptions): { refresh(): void } {
     return b;
   };
 
-  const save = async (timeline: SlideTimeline): Promise<boolean> => {
-    const t = opts.target();
-    if (!t) return false;
-    const res = await fetch(`/api/slides/${t.slideId}`, {
-      method: "PATCH",
-      headers: {
-        "content-type": "application/json",
-        "x-slide-key": t.slideKey,
-      },
-      body: JSON.stringify({ timeline }),
-    });
-    if (!res.ok) return false;
-    saved = timeline;
-    return true;
-  };
-
   const refresh = () => {
-    const can = opts.target() !== null;
+    const can = opts.slideId() !== null;
     recBtn.disabled = !can || busy;
     recBtn.title = can
-      ? "プレビューでの操作を録画して、/s/:id を開いたときに自動再生します"
-      : "作成・更新したスライドで使えます";
-    status.textContent = "";
-    if (saved.length === 0) return;
-    status.append(`自動再生 ${fmtMs(durationOf(saved))}`);
-    if (can && !busy) {
-      status.append(
-        button("削除", async () => {
-          if (await save([])) refresh();
-        }, "btn btn-ghost btn-xs"),
-      );
-    }
+      ? "プレビューでの操作を録画して、自動再生する URL を作ります"
+      : "スライドを作成すると使えます";
   };
 
   // ---- 録画 -------------------------------------------------------------
@@ -205,14 +176,19 @@ export function setupRecording(opts: RecordingOptions): { refresh(): void } {
     globalThis.clearInterval(clock);
     // 停止した時刻まで最後の画面を見せるよう、終端に今の focus を置く。
     recorder.record({ ...last });
-    const timeline = recorder.entries as SlideTimeline;
+    const timeline = recorder.entries;
     recorder = null;
     review(timeline);
   };
 
   // ---- 録画結果の確認 ---------------------------------------------------
 
-  const review = (timeline: SlideTimeline) => {
+  const review = (timeline: TimelineEntry[]) => {
+    const slideId = opts.slideId();
+    if (!slideId) return finish();
+    const url = new URL(`/s/${slideId}`, location.origin);
+    url.searchParams.set("play", encodePlayCode(timeline));
+
     let player: Player | null = null;
     const stopPlayer = () => {
       player?.dispose();
@@ -237,25 +213,27 @@ export function setupRecording(opts: RecordingOptions): { refresh(): void } {
       player.play();
     });
 
-    const saveBtn = button("保存", async () => {
-      stopPlayer();
-      saveBtn.disabled = true;
-      if (await save(timeline)) finish();
-      else {
-        saveBtn.disabled = false;
-        msg.textContent = "保存に失敗しました";
-      }
-    }, "btn btn-primary btn-xs");
+    const open = document.createElement("a");
+    open.className = "btn btn-primary btn-xs";
+    open.href = url.toString();
+    open.target = "_blank";
+    open.rel = "noopener noreferrer";
+    open.textContent = "開く";
+
+    // 録画した URL をそのまま共有する(X ではカード内で自動再生される)。
+    const share = createShareButtons();
+    share.url = url.toString();
 
     showBar(
       msg,
       play,
-      saveBtn,
+      open,
+      share,
       button("やり直す", () => {
         stopPlayer();
         start();
       }),
-      button("破棄", () => {
+      button("閉じる", () => {
         stopPlayer();
         finish();
       }, "btn btn-ghost btn-xs"),

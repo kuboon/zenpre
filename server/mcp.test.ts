@@ -1,4 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
+import { decodePlayCode } from "@kuboon/zenpre/play_code.ts";
 import { createApp } from "./app.ts";
 import { Slides } from "./repo/slides.ts";
 import { Talks } from "./repo/talks.ts";
@@ -84,6 +85,7 @@ Deno.test("mcp: tools/list exposes all tools with object input schemas", async (
     "create_talk",
     "edit_slide",
     "list_pending_posts",
+    "make_play_url",
     "publish_post",
     "upload_slide",
   ]);
@@ -259,4 +261,38 @@ Deno.test("mcp: list_pending_posts + publish_post drive the live relay", async (
   audience.close();
   await new Promise((r) => setTimeout(r, 100));
   await server.shutdown();
+});
+
+Deno.test("mcp: make_play_url returns a /s/:id?play= URL that decodes back", async () => {
+  const handler = app();
+  const up = await call(handler, "upload_slide", {
+    markdown: "# A\n\n---\n\n# B",
+  });
+  const timeline = [
+    { t: 0, action: { type: "focus", page: 1, idx: 0 } },
+    { t: 2000, action: { type: "focus", page: 2, idx: 0 } },
+  ];
+  const { result, isError } = await call(handler, "make_play_url", {
+    slide_id: up.result.slide_id,
+    timeline,
+  });
+  assertEquals(isError, false);
+  const url = new URL(result.play_url, "http://x");
+  assertEquals(url.pathname, `/s/${up.result.slide_id}`);
+  assertEquals(
+    decodePlayCode(url.searchParams.get("play") ?? "") as unknown,
+    timeline,
+  );
+
+  // 存在しないスライド / 空の timeline はエラー
+  assert(
+    (await call(handler, "make_play_url", { slide_id: "nope", timeline }))
+      .isError,
+  );
+  assert(
+    (await call(handler, "make_play_url", {
+      slide_id: up.result.slide_id,
+      timeline: [],
+    })).isError,
+  );
 });

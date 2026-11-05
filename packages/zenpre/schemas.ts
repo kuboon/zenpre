@@ -15,6 +15,25 @@ export const IsoDate = type("string.date.iso");
 // ---------------------------------------------------------------------------
 
 /**
+ * スライド本体。markdown は原文のまま保存し、レンダリングは
+ * `@kuboon/zenpre/render.ts`(クライアント/サーバ共通)で行う。
+ */
+export const SlideSchema = type({
+  /** 公開 ID(URL に載る)。base58 8 文字。 */
+  slide_id: "string",
+  /** markdown 先頭 h1 から自動抽出。なければ "Untitled"。 */
+  title: "string",
+  markdown: "string",
+  /** 追加 CSS。 */
+  css: "string",
+  /** daisyUI theme 名(default: "light")。 */
+  theme: "string",
+  created_at: IsoDate,
+  updated_at: IsoDate,
+});
+export type Slide = typeof SlideSchema.infer;
+
+/**
  * プレゼンの開催枠(1 回のトーク)。`slide_id: null` は「リレー機能だけの
  * トーク」(セルフホスト構成で markdown を自サイトから供給する場合)。
  *
@@ -143,41 +162,3 @@ export const TimelineEntrySchema = type({
   action: ActionSchema,
 });
 export type TimelineEntry = typeof TimelineEntrySchema.infer;
-
-/** スライドに保存する自動再生 timeline の上限件数。 */
-export const SLIDE_TIMELINE_MAX_ENTRIES = 2000;
-
-/** スライドに保存できる timeline(focus / reaction だけを許す)。 */
-export const SlideTimelineSchema = type({
-  t: "number >= 0",
-  action: FocusAction.or(ReactionAction),
-}).array().atMostLength(SLIDE_TIMELINE_MAX_ENTRIES);
-export type SlideTimeline = typeof SlideTimelineSchema.infer;
-
-// ---------------------------------------------------------------------------
-// 永続データ: Slide(timeline を参照するので末尾で定義)
-// ---------------------------------------------------------------------------
-
-/**
- * スライド本体。markdown は原文のまま保存し、レンダリングは
- * `@kuboon/zenpre/render.ts`(クライアント/サーバ共通)で行う。
- */
-export const SlideSchema = type({
-  /** 公開 ID(URL に載る)。base58 8 文字。 */
-  slide_id: "string",
-  /** markdown 先頭 h1 から自動抽出。なければ "Untitled"。 */
-  title: "string",
-  markdown: "string",
-  /** 追加 CSS。 */
-  css: "string",
-  /** daisyUI theme 名(default: "light")。 */
-  theme: "string",
-  /**
-   * 自動再生用の timeline(エディタで録画したもの)。あれば `/s/:id` を
-   * 開いたときに再生する。focus / reaction のみ。
-   */
-  "timeline?": SlideTimelineSchema,
-  created_at: IsoDate,
-  updated_at: IsoDate,
-});
-export type Slide = typeof SlideSchema.infer;

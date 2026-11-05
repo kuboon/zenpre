@@ -11,7 +11,7 @@
 import { defineComponents } from "@kuboon/zenpre/components.ts";
 import type { ZenSlideViewer } from "@kuboon/zenpre/components/slide_viewer.ts";
 import type { ZenReactionLayer } from "@kuboon/zenpre/components/reaction_layer.ts";
-import type { SlideTimeline } from "@kuboon/zenpre/schemas.ts";
+import { createShareButtons } from "@kuboon/share-element";
 import { setupRecording } from "./recording.ts";
 
 defineComponents();
@@ -34,7 +34,7 @@ const abs = (path: string) => new URL(path, location.origin).toString();
 /** localStorage に置く編集鍵のキー。 */
 const keyOf = (slideId: string) => `zen-slide-key:${slideId}`;
 
-type EditData = { slide_id: string; timeline?: SlideTimeline };
+type EditData = { slide_id: string };
 
 /** 編集中のスライド(`/s/:id/edit` で SSR が埋める)。新規なら null。 */
 function readEditData(): EditData | null {
@@ -50,15 +50,6 @@ function readEditData(): EditData | null {
 const editData = readEditData();
 /** 編集対象。作成に成功したらここが埋まり、以後は更新モードになる。 */
 let editing = editData?.slide_id ?? null;
-
-/** 編集鍵(このブラウザに無ければ null)。 */
-function slideKeyOf(slideId: string): string | null {
-  try {
-    return localStorage.getItem(keyOf(slideId));
-  } catch {
-    return null;
-  }
-}
 
 /** 結果パネルにリンク行を足す。 */
 function addLink(label: string, href: string, note?: string): void {
@@ -119,12 +110,7 @@ if (md && viewer) {
     viewer,
     layer,
     md,
-    initial: editData?.timeline ?? [],
-    target: () => {
-      if (!editing) return null;
-      const slideKey = slideKeyOf(editing);
-      return slideKey ? { slideId: editing, slideKey } : null;
-    },
+    slideId: () => editing,
   });
 
   // ---- テーマ(プレビュー枠のみ) ---------------------------------------
@@ -147,6 +133,9 @@ if (md && viewer) {
     h.textContent = "スライドを作成しました";
     result.appendChild(h);
     addLink("スライドを開く", previewUrl);
+    const share = createShareButtons();
+    share.url = abs(previewUrl);
+    result.appendChild(share);
 
     // トークにすると相互配信(focus 追従・リアクション・質問)が使える。
     const talkBtn = document.createElement("button");

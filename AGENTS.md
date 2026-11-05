@@ -237,13 +237,14 @@ ZenPre サーバの **`/mcp`**(本番: `https://zenpre.heartrails.deno.net/mcp`)
 Remote MCP (Streamable HTTP、ステートレス)です。OAuth
 は不要で、認可は各ツール引数の 秘密鍵(capability key)で行います。
 
-| ツール               | 引数                                                                | 返り値 / 用途                                                        |
-| -------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `upload_slide`       | `markdown`, `css?`, `theme?`                                        | `slide_id`, `slide_key`, `preview_url`(`/s/:slide_id`)               |
-| `edit_slide`         | `slide_id`, `slide_key`, `markdown?`, `css?`, `theme?`, `timeline?` | 与えた項目だけ更新(`timeline` は §9.1)                               |
-| `create_talk`        | `slide_id?`, `slide_key?`, `begin_at?`, `end_at?`                   | `talk_id`, `talk_key`, `moderator_key`, 客席/発表者/モデレーター URL |
-| `list_pending_posts` | `talk_id`, `moderator_key`                                          | 客席からの未承認コメント                                             |
-| `publish_post`       | `talk_id`, `moderator_key`, `text`(50 文字まで), `level?`           | コメントを承認して全員へ配信                                         |
+| ツール               | 引数                                                      | 返り値 / 用途                                                        |
+| -------------------- | --------------------------------------------------------- | -------------------------------------------------------------------- |
+| `upload_slide`       | `markdown`, `css?`, `theme?`                              | `slide_id`, `slide_key`, `preview_url`(`/s/:slide_id`)               |
+| `edit_slide`         | `slide_id`, `slide_key`, `markdown?`, `css?`, `theme?`    | 与えた項目だけ更新                                                   |
+| `make_play_url`      | `slide_id`, `timeline`                                    | 自動再生する URL(`/s/:slide_id?play=...`、§9.1)                      |
+| `create_talk`        | `slide_id?`, `slide_key?`, `begin_at?`, `end_at?`         | `talk_id`, `talk_key`, `moderator_key`, 客席/発表者/モデレーター URL |
+| `list_pending_posts` | `talk_id`, `moderator_key`                                | 客席からの未承認コメント                                             |
+| `publish_post`       | `talk_id`, `moderator_key`, `text`(50 文字まで), `level?` | コメントを承認して全員へ配信                                         |
 
 - **`slide_key` / `talk_key` / `moderator_key` は一度しか返りません。** 必ず
   ユーザーに伝えてください(失うと編集・発表ができなくなります)。
@@ -262,7 +263,7 @@ curl -X POST https://zenpre.heartrails.deno.net/api/slides \
   -H 'content-type: application/json' \
   -d '{"markdown":"# Hello\n\n---\n\n# World","theme":"dark"}'
 
-# 取得 → { slide_id, title, markdown, css, theme, timeline }
+# 取得 → { slide_id, title, markdown, css, theme }
 curl https://zenpre.heartrails.deno.net/api/slides/SLIDE_ID
 
 # 更新(与えた項目だけ)
@@ -280,29 +281,37 @@ curl -X POST https://zenpre.heartrails.deno.net/api/talks \
 
 `/new` にエディタ(markdown 入力 + ライブプレビュー + テーマ選択)があります。
 作成後のエディタ(`/s/:slide_id/edit`)では「自動再生を録画」でページ送りを
-録画できます(§9.1)。
+録画し、自動再生する URL を作れます(§9.1)。
 
-### 9.1 自動再生(`timeline`)
+### 9.1 自動再生 URL(`?play=`)
 
-スライドに `timeline` を保存すると、`/s/:slide_id` を開いたときに自動で
-ページ送りされ、最後まで行くとループします(見ている人が操作したら止まる)。 X に
-URL を貼ったときのカード内でも同じように動きます。
+`/s/:slide_id?play=<code>` を開くと、`<code>` に入っている timeline の通りに
+自動でページ送りされ、最後まで行くとループします(見ている人が操作したら
+止まる)。X に貼ったときのカード内でも同じように動きます。録画はサーバに
+保存されず URL だけで完結するので、1 つのスライドに何本でも作れます。
+
+AI からは MCP の `make_play_url` で作ります。
 
 ```json
-[
-  { "t": 0, "action": { "type": "focus", "page": 1, "idx": 0 } },
-  { "t": 2500, "action": { "type": "focus", "page": 2, "idx": 0 } },
-  { "t": 4000, "action": { "type": "focus", "page": 2, "idx": 1 } },
-  { "t": 4300, "action": { "type": "reaction", "emoji": "🎉" } },
-  { "t": 7000, "action": { "type": "focus", "page": 2, "idx": 1 } }
-]
+{
+  "slide_id": "SLIDE_ID",
+  "timeline": [
+    { "t": 0, "action": { "type": "focus", "page": 1, "idx": 0 } },
+    { "t": 2500, "action": { "type": "focus", "page": 2, "idx": 0 } },
+    { "t": 4000, "action": { "type": "focus", "page": 2, "idx": 1 } },
+    { "t": 4300, "action": { "type": "reaction", "emoji": "🎉" } },
+    { "t": 7000, "action": { "type": "focus", "page": 2, "idx": 1 } }
+  ]
+}
 ```
 
-- `t` は開始からのミリ秒。`focus` の `page` / `idx` は §2 と同じ番号です。
+- `t` は開始からのミリ秒(10ms 単位に丸められます)。`focus` の `page` / `idx` は
+  §2 と同じ番号です。
 - 使えるのは `focus` と `reaction` だけ。最大 2000 件。
 - 最後のエントリの `t` が 1 周の長さになります。最後のページを見せる時間を
   取りたいときは、末尾に同じ `focus` をもう一度置いてください。
-- `edit_slide` / `PATCH` で `"timeline": []` を送ると自動再生をやめます。
+- markdown を編集してページや見出しの数が変わると、前に作った URL の
+  再生はずれます。作り直してください。
 
 ### 既存スライドを読む
 

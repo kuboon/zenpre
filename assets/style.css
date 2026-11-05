@@ -184,15 +184,6 @@
 
 /* ---- 自動再生の録画(エディタ) ----------------------------------------- */
 
-.zen-rec-status {
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  color: var(--color-base-content);
-}
-
 .zen-rec-bar {
   position: absolute;
   left: 50%;
@@ -216,6 +207,20 @@
 
 .zen-rec-bar[hidden] {
   display: none;
+}
+
+/* 録画バー内の共有ボタン(@kuboon/share-element)は小さめに並べる */
+.zen-rec-bar .share-buttons {
+  gap: 0.25rem;
+}
+
+.zen-rec-bar .share-buttons__button {
+  padding: 0.3rem 0.45rem;
+}
+
+.zen-rec-bar .share-buttons__icon {
+  width: 1rem;
+  height: 1rem;
 }
 
 .zen-rec-count {

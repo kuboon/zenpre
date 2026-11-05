@@ -1,10 +1,11 @@
 {
   "compilerOptions": {
-    "lib": ["dom", "es2024"],
+    "lib": ["dom", "esnext"],
     "jsx": "react-jsx",
     "jsxImportSource": "@remix-run/component"
   },
   "imports": {
+    "@kuboon/share-element": "jsr:@kuboon/share-element@^0.7.0",
     "@remix-run/component": "npm:@remix-run/component@^1.1.0"
   }
 }

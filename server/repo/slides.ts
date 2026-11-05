@@ -7,7 +7,7 @@
  * - `["slide_keys", slide_id]`  → `{ key_hash }`(SHA-256(slide_key))
  */
 import type { KvKeyPart, KvRepo } from "@kuboon/kv";
-import type { Slide, SlideTimeline } from "@kuboon/zenpre/schemas.ts";
+import type { Slide } from "@kuboon/zenpre/schemas.ts";
 import {
   genPublicId,
   genSecretKey,
@@ -69,13 +69,7 @@ export class Slides {
   async update(
     slide_id: string,
     slide_key: string,
-    patch: {
-      markdown?: string;
-      css?: string;
-      theme?: string;
-      /** 自動再生 timeline。空配列で削除する。 */
-      timeline?: SlideTimeline;
-    },
+    patch: { markdown?: string; css?: string; theme?: string },
   ): Promise<Slide | "forbidden" | "not_found"> {
     const stored = await this.#keys.entry(slide_id).get();
     if (!stored) return "not_found";
@@ -90,11 +84,6 @@ export class Slides {
       title: patch.markdown ? extractTitle(patch.markdown) : current.title,
       updated_at: new Date().toISOString(),
     };
-    if (patch.timeline?.length) {
-      next.timeline = patch.timeline.slice().sort((a, b) => a.t - b.t);
-    } else if (patch.timeline) {
-      delete next.timeline; // 空配列 = 自動再生をやめる
-    }
     await this.#slides.entry(slide_id).update(() => next);
     return next;
   }

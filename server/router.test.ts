@@ -1,4 +1,5 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
+import { encodePlayCode } from "@kuboon/zenpre/play_code.ts";
 import { makeRouter } from "./router.ts";
 import { Slides } from "./repo/slides.ts";
 import { Talks } from "./repo/talks.ts";
@@ -529,7 +530,7 @@ Deno.test("localhost keeps http for card URLs", async () => {
   assertStringIncludes(html, 'content="http://localhost:8000/card.png"');
 });
 
-Deno.test("PATCH timeline → /s/:id autoplays it; [] removes it", async () => {
+Deno.test("GET /s/:id?play=<code> autoplays the encoded recording", async () => {
   const router = app();
   const created = await (await router.fetch(
     new Request("http://x/api/slides", {
@@ -538,56 +539,41 @@ Deno.test("PATCH timeline → /s/:id autoplays it; [] removes it", async () => {
       body: JSON.stringify({ markdown: "# A\n\n---\n\n# B" }),
     }),
   )).json();
-  const patch = (body: unknown, key = created.slide_key) =>
-    router.fetch(
-      new Request(`http://x/api/slides/${created.slide_id}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json", "x-slide-key": key },
-        body: JSON.stringify(body),
-      }),
-    );
-  const page = async () =>
-    await (await router.fetch(new Request(`http://x/s/${created.slide_id}`)))
-      .text();
-
-  // 録画前は自動再生しない
-  assert(!(await page()).includes('id="zen-timeline-data"'));
-
   const timeline = [
-    { t: 1500, action: { type: "focus", page: 2, idx: 0 } },
-    { t: 0, action: { type: "focus", page: 1, idx: 0 } },
-    { t: 800, action: { type: "reaction", emoji: "🎉" } },
+    { t: 0, action: { type: "focus" as const, page: 1, idx: 0 } },
+    { t: 800, action: { type: "reaction" as const, emoji: "🎉" } },
+    { t: 1500, action: { type: "focus" as const, page: 2, idx: 0 } },
   ];
-  // focus / reaction 以外(post 等)は保存できない
-  assertEquals(
-    (await patch({
-      timeline: [{ t: 0, action: { type: "post", text: "x", level: 0 } }],
-    })).status,
-    400,
-  );
-  assertEquals((await patch({ timeline }, "wrong")).status, 403);
-  assertEquals((await patch({ timeline })).status, 200);
+  const code = encodePlayCode(timeline);
+  const page = async (query: string) =>
+    await (await router.fetch(
+      new Request(`http://zenpre.example/s/${created.slide_id}${query}`),
+    )).text();
 
-  const got = await (await router.fetch(
-    new Request(`http://x/api/slides/${created.slide_id}`),
-  )).json();
-  assertEquals(got.timeline.map((e: { t: number }) => e.t), [0, 800, 1500]);
-  assertEquals(got.markdown, "# A\n\n---\n\n# B"); // 他の項目は変わらない
+  // play なし: 自動再生しない
+  const plain = await page("");
+  assert(!plain.includes('id="zen-timeline-data"'));
 
-  const html = await page();
+  const html = await page(`?play=${code}&autoplay=1`);
   assertStringIncludes(html, 'id="zen-timeline-data"');
+  assertStringIncludes(html, '"emoji":"🎉"');
   assertStringIncludes(html, "<zen-reaction-layer>");
-  assertStringIncludes(html, "/slide.js");
+  // X カードもこの録画のまま埋め込む(X が足すクエリは落とす)
+  assertStringIncludes(
+    html,
+    `<meta name="twitter:player" content="https://zenpre.example/s/${created.slide_id}?play=${code}">`,
+  );
 
-  assertEquals((await patch({ timeline: [] })).status, 200);
-  assert(!(await page()).includes('id="zen-timeline-data"'));
-  const cleared = await (await router.fetch(
-    new Request(`http://x/api/slides/${created.slide_id}`),
-  )).json();
-  assertEquals(cleared.timeline, []);
+  // 壊れた play は無視して普通に表示する
+  const broken = await page("?play=1%21%21");
+  assertEquals(broken.includes('id="zen-timeline-data"'), false);
+  assertStringIncludes(
+    broken,
+    `<meta name="twitter:player" content="https://zenpre.example/s/${created.slide_id}">`,
+  );
 });
 
-Deno.test("GET /s/:id/edit has the recording UI and the saved timeline", async () => {
+Deno.test("GET /s/:id/edit has the recording UI", async () => {
   const router = app();
   const created = await (await router.fetch(
     new Request("http://x/api/slides", {
@@ -602,5 +588,4 @@ Deno.test("GET /s/:id/edit has the recording UI and the saved timeline", async (
   assertStringIncludes(html, 'id="zen-rec"');
   assertStringIncludes(html, 'id="zen-rec-bar"');
   assertStringIncludes(html, "<zen-reaction-layer>");
-  assertStringIncludes(html, '"timeline":[]');
 });
