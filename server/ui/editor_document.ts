@@ -7,6 +7,10 @@
  * スライド本体のページ({@link renderSlideDocument})とは別レイアウトなので
  * 専用のドキュメントを組み立てる。プレビューは `<zen-slide-viewer>` に
  * `load({ markdown })` させるだけ(SSR しない)= 実際の閲覧画面と同じ描画経路。
+ *
+ * 「自動再生を録画」でプレビュー上の操作(ページ送り・見出しタップ・
+ * リアクション)を時刻つきで記録し、スライドの `timeline` として保存できる
+ * (`client/recording.ts`)。
  */
 import { escapeHtml } from "@kuboon/zenpre/sandbox.ts";
 import type { Slide } from "@kuboon/zenpre/schemas.ts";
@@ -68,7 +72,10 @@ export function renderEditorDocument(slide?: Slide): string {
   // 編集対象をクライアントへ渡す(slide_key は localStorage 側で持つ)。
   const editData = slide
     ? `\n<script type="application/json" id="zen-edit-data">${
-      JSON.stringify({ slide_id: slide.slide_id }).replace(/</g, "\\u003c")
+      JSON.stringify({
+        slide_id: slide.slide_id,
+        timeline: slide.timeline ?? [],
+      }).replace(/</g, "\\u003c")
     }</script>`
     : "";
 
@@ -89,6 +96,9 @@ export function renderEditorDocument(slide?: Slide): string {
         テーマ
         <select id="zen-theme" class="select select-xs">${themeOptions}</select>
       </label>
+      <span id="zen-rec-status" class="zen-rec-status"></span>
+      <button type="button" id="zen-rec" class="btn btn-sm" disabled
+        title="作成・更新したスライドで使えます">⏺ 自動再生を録画</button>
       <button type="button" id="zen-create" class="btn btn-primary btn-sm">
         ${slide ? "更新する" : "スライドを作成"}
       </button>
@@ -101,6 +111,8 @@ export function renderEditorDocument(slide?: Slide): string {
     escapeHtml(theme)
   }">
     <zen-slide-viewer></zen-slide-viewer>
+    <zen-reaction-layer></zen-reaction-layer>
+    <div id="zen-rec-bar" class="zen-rec-bar" hidden></div>
   </section>
 </div>${editData}
 <script type="module" src="/new.js"></script>

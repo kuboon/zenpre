@@ -15,7 +15,10 @@
  */
 import { type } from "arktype";
 import { genPublicId } from "@kuboon/zenpre/keys.ts";
-import { POST_TEXT_MAX_GRAPHEMES } from "@kuboon/zenpre/schemas.ts";
+import {
+  POST_TEXT_MAX_GRAPHEMES,
+  SlideTimelineSchema,
+} from "@kuboon/zenpre/schemas.ts";
 import type { Slides } from "./repo/slides.ts";
 import type { Talks } from "./repo/talks.ts";
 import type { HubRegistry } from "./relay/hub.ts";
@@ -82,13 +85,15 @@ const TOOLS: ToolDef[] = [
   {
     name: "edit_slide",
     description:
-      "既存スライドを更新する。slide_key が必要。markdown/css/theme は与えたものだけ更新。",
+      "既存スライドを更新する。slide_key が必要。markdown/css/theme/timeline は与えたものだけ更新。" +
+      "timeline は自動再生用の [{ t: ミリ秒, action: { type: 'focus', page, idx } | { type: 'reaction', emoji } }]。[] で削除。",
     input: type({
       slide_id: "string",
       slide_key: "string",
       "markdown?": "string",
       "css?": "string",
       "theme?": "string",
+      "timeline?": SlideTimelineSchema,
     }),
     handler: async (args, { slides }) => {
       const { slide_id, slide_key, ...patch } = args;

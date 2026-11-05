@@ -116,6 +116,7 @@
 }
 
 .zen-editor-theme {
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -172,10 +173,69 @@
    (実際の閲覧ページと同じく、表示領域に合わせてレスポンシブに伸縮する)。 */
 .zen-editor-preview {
   display: grid; /* 子(viewer)を stretch させて領域いっぱいに描画する */
+  position: relative;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
   background-color: var(--color-base-100);
+  /* fixed で全画面に出る <zen-reaction-layer> をプレビュー枠に閉じ込める */
+  contain: paint;
+}
+
+/* ---- 自動再生の録画(エディタ) ----------------------------------------- */
+
+.zen-rec-status {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-base-content);
+}
+
+.zen-rec-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 0.75rem;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  width: max-content;
+  max-width: calc(100% - 1.5rem);
+  padding: 0.4rem 0.75rem;
+  border-radius: 1rem;
+  background-color: color-mix(in oklch, var(--color-base-100) 90%, transparent);
+  color: var(--color-base-content);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  font-size: 0.85rem;
+}
+
+.zen-rec-bar[hidden] {
+  display: none;
+}
+
+.zen-rec-count {
+  font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.zen-rec-time {
+  color: var(--color-error);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.zen-rec-emoji {
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 0.1rem 0.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 
 /* ---- トップページから /new への導線 ------------------------------------ */

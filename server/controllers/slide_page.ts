@@ -9,6 +9,9 @@
  * X(Twitter)の Player Card にも対応する。このページ自身が `twitter:player`
  * になり、ポスト内の 480×480 の iframe でそのままめくれる。iframe 埋め込みを
  * 許すため `X-Frame-Options` / `frame-ancestors` は付けない。
+ *
+ * エディタで録画した timeline を持つスライドは、開くと自動再生する
+ * (`/slide.js`。見ている人が操作したら止まる)。
  */
 import type { Action } from "@remix-run/fetch-router";
 import type { routes } from "../routes.ts";
@@ -52,6 +55,8 @@ export function slidePageAction(slides: Slides) {
         css: slide.css,
         theme: slide.theme,
         pageCounter: true,
+        // エディタで録画した timeline があれば開いたときに自動再生する。
+        timeline: slide.timeline?.length ? slide.timeline : undefined,
         card: { url: pageUrl, image: `${origin}/card.png` },
       });
 

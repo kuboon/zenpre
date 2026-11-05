@@ -2,8 +2,8 @@
  * Slide の REST API。
  *
  * - `POST  /api/slides`            — 作成(公開)。`{ slide_id, slide_key, preview_url }` を返す
- * - `GET   /api/slides/:slide_id`  — 取得(公開)。`{ slide_id, title, markdown, css, theme }`
- * - `PATCH /api/slides/:slide_id`  — 更新(`X-Slide-Key` 必須)
+ * - `GET   /api/slides/:slide_id`  — 取得(公開)。`{ slide_id, title, markdown, css, theme, timeline }`
+ * - `PATCH /api/slides/:slide_id`  — 更新(`X-Slide-Key` 必須)。`timeline: []` で自動再生を削除
  *
  * 認可は capability key(`slide_key`)のみで、cookie を使わないため CORS は
  * 全開放してよい(§8/§12)。MCP tool(M5)はこの controller の薄い wrapper。
@@ -11,6 +11,7 @@
 import { type } from "arktype";
 import type { Action } from "@remix-run/fetch-router";
 import type { routes } from "../../routes.ts";
+import { SlideTimelineSchema } from "@kuboon/zenpre/schemas.ts";
 import type { Slides } from "../../repo/slides.ts";
 
 const CreateInput = type({
@@ -22,6 +23,8 @@ const PatchInput = type({
   "markdown?": "string",
   "css?": "string",
   "theme?": "string",
+  /** 自動再生 timeline。`[]` で削除。 */
+  "timeline?": SlideTimelineSchema,
 });
 
 const CORS = { "Access-Control-Allow-Origin": "*" };
@@ -65,6 +68,7 @@ export function slideGetAction(slides: Slides) {
         markdown: slide.markdown,
         css: slide.css,
         theme: slide.theme,
+        timeline: slide.timeline ?? [],
       });
     },
   } satisfies Action<typeof routes.api.slideGet>;

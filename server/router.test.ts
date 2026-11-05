@@ -528,3 +528,79 @@ Deno.test("localhost keeps http for card URLs", async () => {
   )).text();
   assertStringIncludes(html, 'content="http://localhost:8000/card.png"');
 });
+
+Deno.test("PATCH timeline → /s/:id autoplays it; [] removes it", async () => {
+  const router = app();
+  const created = await (await router.fetch(
+    new Request("http://x/api/slides", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ markdown: "# A\n\n---\n\n# B" }),
+    }),
+  )).json();
+  const patch = (body: unknown, key = created.slide_key) =>
+    router.fetch(
+      new Request(`http://x/api/slides/${created.slide_id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", "x-slide-key": key },
+        body: JSON.stringify(body),
+      }),
+    );
+  const page = async () =>
+    await (await router.fetch(new Request(`http://x/s/${created.slide_id}`)))
+      .text();
+
+  // 録画前は自動再生しない
+  assert(!(await page()).includes('id="zen-timeline-data"'));
+
+  const timeline = [
+    { t: 1500, action: { type: "focus", page: 2, idx: 0 } },
+    { t: 0, action: { type: "focus", page: 1, idx: 0 } },
+    { t: 800, action: { type: "reaction", emoji: "🎉" } },
+  ];
+  // focus / reaction 以外(post 等)は保存できない
+  assertEquals(
+    (await patch({
+      timeline: [{ t: 0, action: { type: "post", text: "x", level: 0 } }],
+    })).status,
+    400,
+  );
+  assertEquals((await patch({ timeline }, "wrong")).status, 403);
+  assertEquals((await patch({ timeline })).status, 200);
+
+  const got = await (await router.fetch(
+    new Request(`http://x/api/slides/${created.slide_id}`),
+  )).json();
+  assertEquals(got.timeline.map((e: { t: number }) => e.t), [0, 800, 1500]);
+  assertEquals(got.markdown, "# A\n\n---\n\n# B"); // 他の項目は変わらない
+
+  const html = await page();
+  assertStringIncludes(html, 'id="zen-timeline-data"');
+  assertStringIncludes(html, "<zen-reaction-layer>");
+  assertStringIncludes(html, "/slide.js");
+
+  assertEquals((await patch({ timeline: [] })).status, 200);
+  assert(!(await page()).includes('id="zen-timeline-data"'));
+  const cleared = await (await router.fetch(
+    new Request(`http://x/api/slides/${created.slide_id}`),
+  )).json();
+  assertEquals(cleared.timeline, []);
+});
+
+Deno.test("GET /s/:id/edit has the recording UI and the saved timeline", async () => {
+  const router = app();
+  const created = await (await router.fetch(
+    new Request("http://x/api/slides", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ markdown: "# A" }),
+    }),
+  )).json();
+  const html = await (await router.fetch(
+    new Request(`http://x/s/${created.slide_id}/edit`),
+  )).text();
+  assertStringIncludes(html, 'id="zen-rec"');
+  assertStringIncludes(html, 'id="zen-rec-bar"');
+  assertStringIncludes(html, "<zen-reaction-layer>");
+  assertStringIncludes(html, '"timeline":[]');
+});
