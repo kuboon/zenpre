@@ -180,6 +180,25 @@
 
 /* ---- トップページから /new への導線 ------------------------------------ */
 
+/* ---- ページ番号(右下の「3 / 10」) ------------------------------------ */
+
+.zen-page-counter {
+  position: fixed;
+  right: max(0.75rem, env(safe-area-inset-right));
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  z-index: 50;
+  padding: 0.15rem 0.6rem;
+  border-radius: 9999px;
+  /* zen-html ページは任意の背景色なので、テーマに依らない半透明の黒にする */
+  background-color: rgb(0 0 0 / 0.55);
+  color: #fff;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  pointer-events: none;
+  user-select: none;
+}
+
 .zen-cta {
   position: fixed;
   top: max(0.75rem, env(safe-area-inset-top));

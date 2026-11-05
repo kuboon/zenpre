@@ -41,7 +41,76 @@ export type SlideDocInput = {
    * 実際に発表・閲覧するページは枠なしの全画面で表示する(default: false)。
    */
   phoneMock?: boolean;
+  /** 画面右下に「3 / 10」形式のページ番号を出す(default: false)。 */
+  pageCounter?: boolean;
+  /**
+   * X(Twitter)の Player Card / OGP の meta を出す。このページ自身を
+   * `twitter:player` として X のポスト内 iframe で再生させる。
+   * URL はすべて絶対 HTTPS URL で渡すこと。
+   */
+  card?: {
+    /** このページの絶対 URL(`og:url` と `twitter:player`)。 */
+    url: string;
+    /** ポスター画像の絶対 URL(正方形 PNG/JPG)。 */
+    image: string;
+    /** 説明文。省略時は 1 ページ目の本文から作る。 */
+    description?: string;
+  };
 };
+
+/** X Player Card の iframe サイズ。これより大きいと画像カードに落ちる報告がある。 */
+const PLAYER_SIZE = 480;
+
+/** HTML 片からタグを除いたプレーンテキスト(空白を 1 つに畳む)。 */
+const htmlToText = (html: string): string =>
+  html
+    .replace(/<(script|style|svg|iframe)\b[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&#x27;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const truncate = (s: string, max: number): string =>
+  [...s].length > max ? [...s].slice(0, max - 1).join("") + "…" : s;
+
+/** 1 ページ目の本文(h1 を除く)から説明文を作る。 */
+function describeFirstPage(firstPage: string | undefined): string {
+  const body = (firstPage ?? "").replace(/<h1\b[\s\S]*?<\/h1>/i, " ");
+  return truncate(htmlToText(body) || "ZenPre のスライド", 200);
+}
+
+function cardMeta(
+  card: NonNullable<SlideDocInput["card"]>,
+  title: string,
+  firstPage: string | undefined,
+): string {
+  const description = truncate(
+    card.description ?? describeFirstPage(firstPage),
+    200,
+  );
+  const meta = (attr: "name" | "property", key: string, value: string) =>
+    `\n<meta ${attr}="${key}" content="${escapeHtml(value)}">`;
+  return [
+    meta("name", "description", description),
+    meta("property", "og:type", "website"),
+    meta("property", "og:site_name", "ZenPre"),
+    meta("property", "og:title", truncate(title, 70)),
+    meta("property", "og:description", description),
+    meta("property", "og:url", card.url),
+    meta("property", "og:image", card.image),
+    meta("name", "twitter:card", "player"),
+    meta("name", "twitter:title", truncate(title, 70)),
+    meta("name", "twitter:description", description),
+    meta("name", "twitter:image", card.image),
+    meta("name", "twitter:player", card.url),
+    meta("name", "twitter:player:width", String(PLAYER_SIZE)),
+    meta("name", "twitter:player:height", String(PLAYER_SIZE)),
+  ].join("");
+}
 
 /** スライド表示用の完全な HTML ドキュメントを返す。 */
 export async function renderSlideDocument(
@@ -104,8 +173,14 @@ export async function renderSlideDocument(
     }</a>`
     : "";
 
+  const pageCount = rendered.pages.length;
+  // JS 無効でも「1 / N」は見える。ページ送りに応じて client 側で更新する。
+  const pageCounter = input.pageCounter
+    ? `\n<div class="zen-page-counter" aria-live="polite" data-total="${pageCount}">1 / ${pageCount}</div>`
+    : "";
+
   const viewer =
-    `<zen-slide-viewer${autoplayAttr}><div class="zen-track">${pagesHtml}</div></zen-slide-viewer>${reactionLayer}`;
+    `<zen-slide-viewer${autoplayAttr}><div class="zen-track">${pagesHtml}</div></zen-slide-viewer>${reactionLayer}${pageCounter}`;
   // phone モックアップはランディングの演出だけ。閲覧・発表ページは全画面。
   const stage = input.phoneMock
     ? `<div class="zen-stage">
@@ -125,7 +200,9 @@ ${viewer}
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>${escapeHtml(input.title)} — ZenPre</title>
+<title>${escapeHtml(input.title)} — ZenPre</title>${
+    input.card ? cardMeta(input.card, input.title, rendered.pages[0]) : ""
+  }
 <link rel="stylesheet" href="/style.css">
 <style>${sanitizeCss(input.css ?? "")}</style>
 </head>
