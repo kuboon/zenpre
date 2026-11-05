@@ -66,7 +66,10 @@ Deno.test("phone mock is landing-only; other pages are fullscreen", async () => 
 Deno.test("GET / links to the editor (動線)", async () => {
   const res = await app().fetch(new Request("http://x/"));
   const html = await res.text();
-  assertStringIncludes(html, '<a class="zen-cta" href="/new"');
+  // ナビとヒーローからエディタへ。phone モックはヒーローの一部として残す
+  assertStringIncludes(html, 'href="/new" class="zl-btn');
+  assertStringIncludes(html, 'class="zl-hero-stage"');
+  assertStringIncludes(html, "mockup-phone");
 });
 
 Deno.test("GET /new is the markdown editor with live preview", async () => {

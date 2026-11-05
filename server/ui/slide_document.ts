@@ -41,6 +41,12 @@ export type SlideDocInput = {
    * 実際に発表・閲覧するページは枠なしの全画面で表示する(default: false)。
    */
   phoneMock?: boolean;
+  /**
+   * ステージ(スライド表示部)をページ全体のレイアウトに埋め込む。
+   * ランディングページ(`/`)が phone モックアップを自前の構成の一部として
+   * 置くために使う。省略時はステージだけを body に置く。
+   */
+  shell?: (stage: string) => string;
   /** 画面右下に「3 / 10」形式のページ番号を出す(default: false)。 */
   pageCounter?: boolean;
   /**
@@ -206,8 +212,8 @@ ${viewer}
 <link rel="stylesheet" href="/style.css">
 <style>${sanitizeCss(input.css ?? "")}</style>
 </head>
-<body>
-${stage}${dock}${cta}
+<body${input.shell ? ' class="zen-landing-body"' : ""}>
+${input.shell ? input.shell(stage) : stage}${dock}${cta}
 <script type="application/json" id="zen-slide-data">${data}</script>${talkScript}${timelineScript}
 <script type="module" src="${clientScript}"></script>
 </body>

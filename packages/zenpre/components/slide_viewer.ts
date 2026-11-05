@@ -209,16 +209,32 @@ export class ZenSlideViewer extends HTMLElement {
     // reaction / post 等は M2 以降で対応。
   }
 
-  /** 指定ページ(1 起点)へ移動し、idx>0 なら該当 heading を軽く強調する。 */
+  /**
+   * 指定ページ(1 起点)へ移動し、idx>0 なら該当 heading を軽く強調する。
+   *
+   * スクロールはビューア内(横 = track、縦 = ページ)だけで行う。
+   * `scrollIntoView` は window まで動かすので、ビューアを長いページの一部に
+   * 埋め込んだとき(ランディングの phone モック等)に読者のスクロール位置を
+   * 奪ってしまう。
+   */
   focusOn(page: number, idx = 0): void {
     const pages = this.#pages();
     const target = pages[page - 1];
-    if (!target) return;
-    target.scrollIntoView({ behavior: "smooth", inline: "start" });
+    const track = this.#track;
+    if (!target || !track) return;
+    const left = track.scrollLeft +
+      (target.getBoundingClientRect().left -
+        track.getBoundingClientRect().left);
+    track.scrollTo({ left, behavior: "smooth" });
     if (idx > 0) {
       const heading = target.querySelector<HTMLElement>(`[data-idx="${idx}"]`);
       if (heading) {
-        heading.scrollIntoView({ behavior: "smooth", block: "center" });
+        // heading をページ(縦スクロール枠)の中央へ。
+        const top = target.scrollTop +
+          (heading.getBoundingClientRect().top -
+            target.getBoundingClientRect().top) -
+          (target.clientHeight - heading.offsetHeight) / 2;
+        target.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
         heading.classList.add("zen-focus");
         globalThis.setTimeout(
           () => heading.classList.remove("zen-focus"),
