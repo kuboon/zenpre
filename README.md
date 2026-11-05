@@ -4,6 +4,7 @@
 
 - 要件: [PLAN.md](./PLAN.md)
 - 実装計画: [IMPLEMENTATION.md](./IMPLEMENTATION.md)
+- スライドを作る AI 向けガイド: [AGENTS.md](./AGENTS.md)(本番では `/AGENTS.md` で配信)
 
 ## 構成
 
