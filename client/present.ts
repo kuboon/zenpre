@@ -83,14 +83,22 @@ if (data && viewer) {
     recorder.record(action);
   };
 
-  // ページ送りを focus として配信(idx 0 = ページ先頭)。
-  let lastPage = 0;
+  // ページ送りを focus(idx 0 = ページ先頭)、↑ ↓ の見出しジャンプを
+  // focus(page, idx)として配信する。
+  let last = { page: 0, idx: 0 };
+  const sendFocus = (page: number, idx: number) => {
+    if (page === last.page && idx === last.idx) return;
+    last = { page, idx };
+    publish({ type: "focus", page, idx });
+  };
   viewer.addEventListener("zen-navigate", (e) => {
     const page = (e as CustomEvent<{ page: number }>).detail.page;
-    if (page !== lastPage) {
-      lastPage = page;
-      publish({ type: "focus", page, idx: 0 });
-    }
+    if (page !== last.page) sendFocus(page, 0);
+  });
+  viewer.addEventListener("zen-focus", (e) => {
+    const { page, idx } = (e as CustomEvent<{ page: number; idx: number }>)
+      .detail;
+    sendFocus(page, idx);
   });
 
   reactionBar((emoji) => publish({ type: "reaction", emoji }));

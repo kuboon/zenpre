@@ -120,22 +120,47 @@ if (md && viewer) {
 
   // ---- 作成 / 更新 ------------------------------------------------------
 
-  /** 作成直後に出す案内(閲覧 URL + トーク開始)。 */
-  const showCreated = (
-    slideId: string,
-    slideKey: string,
-    previewUrl: string,
-  ) => {
+  type TalkLinks = {
+    audience_url: string;
+    presenter_url: string;
+    moderator_url: string;
+  };
+  /** このブラウザで作ったトークの URL(発表者・モデレーターは鍵つき)。 */
+  const talkKeyOf = (slideId: string) => `zen-slide-talk:${slideId}`;
+  const loadTalk = (slideId: string): TalkLinks | null => {
+    try {
+      const raw = localStorage.getItem(talkKeyOf(slideId));
+      return raw ? JSON.parse(raw) as TalkLinks : null;
+    } catch {
+      return null;
+    }
+  };
+  const showTalk = (talk: TalkLinks) => {
+    addLink("客席 URL(共有する)", talk.audience_url);
+    addLink("発表者", talk.presenter_url, "鍵つき・共有しない");
+    addLink("モデレーター", talk.moderator_url, "鍵つき・共有しない");
+  };
+
+  /**
+   * 結果パネル(閲覧 URL・共有・トーク)。作成直後・更新後・編集ページを
+   * 開いたときに同じものを出す。トークは作ってあればその URL を、
+   * 無ければ「トークを開始する」ボタンを出す。
+   */
+  const showPanel = (heading: string, slideId: string, slideKey: string) => {
     if (!result) return;
     result.hidden = false;
     result.textContent = "";
     const h = document.createElement("strong");
-    h.textContent = "スライドを作成しました";
+    h.textContent = heading;
     result.appendChild(h);
+    const previewUrl = `/s/${slideId}`;
     addLink("スライドを開く", previewUrl);
     const share = createShareButtons();
     share.url = abs(previewUrl);
     result.appendChild(share);
+
+    const saved = loadTalk(slideId);
+    if (saved) return showTalk(saved);
 
     // トークにすると相互配信(focus 追従・リアクション・質問)が使える。
     const talkBtn = document.createElement("button");
@@ -154,15 +179,17 @@ if (md && viewer) {
           body: JSON.stringify({ slide_id: slideId }),
         });
         if (!tRes.ok) throw new Error(`talk failed: ${tRes.status}`);
-        const talk = await tRes.json() as {
-          audience_url: string;
-          presenter_url: string;
-          moderator_url: string;
+        const t = await tRes.json() as TalkLinks;
+        const talk = {
+          audience_url: t.audience_url,
+          presenter_url: t.presenter_url,
+          moderator_url: t.moderator_url,
         };
+        try {
+          localStorage.setItem(talkKeyOf(slideId), JSON.stringify(talk));
+        } catch { /* ignore */ }
         talkBtn.remove();
-        addLink("客席 URL(共有する)", talk.audience_url);
-        addLink("発表者", talk.presenter_url, "鍵つき・共有しない");
-        addLink("モデレーター", talk.moderator_url, "鍵つき・共有しない");
+        showTalk(talk);
       } catch (e) {
         talkBtn.disabled = false;
         console.error(e);
@@ -194,14 +221,7 @@ if (md && viewer) {
           body,
         });
         if (!res.ok) throw new Error(`update failed: ${res.status}`);
-        if (result) {
-          result.hidden = false;
-          result.textContent = "";
-          const h = document.createElement("strong");
-          h.textContent = "更新しました";
-          result.appendChild(h);
-          addLink("スライドを開く", `/s/${editing}`);
-        }
+        showPanel("更新しました", editing, key);
       } else {
         // ---- 新規作成 ----
         const res = await fetch("/api/slides", {
@@ -222,7 +242,7 @@ if (md && viewer) {
         editing = slide.slide_id;
         history.replaceState(null, "", `/s/${slide.slide_id}/edit`);
         document.title = "スライドを編集 — ZenPre";
-        showCreated(slide.slide_id, slide.slide_key, slide.preview_url);
+        showPanel("スライドを作成しました", slide.slide_id, slide.slide_key);
         recording.refresh();
       }
     } catch (e) {
@@ -239,8 +259,12 @@ if (md && viewer) {
     }
   });
 
+  // 編集モードで鍵があれば、最初から共有・トークの案内を出しておく。
+  const openKey = editing ? localStorage.getItem(keyOf(editing)) : null;
+  if (editing && openKey) showPanel("このスライド", editing, openKey);
+
   // 編集モードなのに鍵が無い(他人のスライド/別ブラウザ)ときは更新できない。
-  if (editing && !localStorage.getItem(keyOf(editing))) {
+  if (editing && !openKey) {
     if (createBtn) {
       createBtn.disabled = true;
       createBtn.title = "このブラウザに編集鍵がありません";
