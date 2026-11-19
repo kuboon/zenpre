@@ -173,6 +173,9 @@
    (実際の閲覧ページと同じく、表示領域に合わせてレスポンシブに伸縮する)。 */
 .zen-editor-preview {
   display: grid; /* 子(viewer)を stretch させて領域いっぱいに描画する */
+  /* 最小 0 の 1 マス。auto だと viewer がスライドの全長まで伸び、
+     ページ内の縦スクロールが効かなくなる。 */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   position: relative;
   min-height: 0;
   min-width: 0;

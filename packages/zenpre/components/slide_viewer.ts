@@ -263,6 +263,47 @@ export class ZenSlideViewer extends HTMLElement {
     this.focusOn(next);
   }
 
+  /**
+   * 上下系のキーで今のページを縦スクロールする。フォーカスはビューア自身に
+   * あり、スクロールするのは中のページなので、ブラウザ標準のキー操作では
+   * 動かない。処理したら true。
+   */
+  #scrollByKey(e: KeyboardEvent): boolean {
+    if (e.altKey || e.ctrlKey || e.metaKey) return false;
+    const page = this.#pages()[this.currentPage - 1];
+    if (!page) return false;
+    const screen = page.clientHeight * 0.85;
+    let top: number;
+    switch (e.key) {
+      case "ArrowDown":
+        top = page.scrollTop + 64;
+        break;
+      case "ArrowUp":
+        top = page.scrollTop - 64;
+        break;
+      case "PageDown":
+        top = page.scrollTop + screen;
+        break;
+      case "PageUp":
+        top = page.scrollTop - screen;
+        break;
+      case " ":
+        top = page.scrollTop + (e.shiftKey ? -screen : screen);
+        break;
+      case "Home":
+        top = 0;
+        break;
+      case "End":
+        top = page.scrollHeight;
+        break;
+      default:
+        return false;
+    }
+    this.#stopAutoplay();
+    page.scrollTo({ top, behavior: "smooth" });
+    return true;
+  }
+
   // ---- autoplay ---------------------------------------------------------
 
   #startAutoplayIfNeeded(): void {
@@ -296,6 +337,7 @@ export class ZenSlideViewer extends HTMLElement {
     this.addEventListener("keydown", (e) => {
       if (e.key === "ArrowRight") this.#go(1);
       else if (e.key === "ArrowLeft") this.#go(-1);
+      else if (this.#scrollByKey(e)) e.preventDefault();
     });
     this.tabIndex = 0;
 
