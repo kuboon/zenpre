@@ -70,6 +70,11 @@ type RelayLike = {
   close(): void;
 };
 
+/** focus した見出しを置く位置(ページの高さに対する割合、上から)。 */
+const HEADING_OFFSET = 0.08;
+/** 「いま読んでいる見出し」とみなす基準線(ページの高さに対する割合、上から)。 */
+const CURRENT_LINE = 0.25;
+
 export class ZenSlideViewer extends HTMLElement {
   #track: HTMLElement | null = null;
   #follow = true;
@@ -121,8 +126,13 @@ export class ZenSlideViewer extends HTMLElement {
     }
   }
 
-  /** 描画済みページ HTML から track を組み立てる。 */
+  /**
+   * 描画済みページ HTML から track を組み立てる。作り直し(エディタの
+   * ライブプレビュー等)では、見ていたページと縦スクロール位置を引き継ぐ。
+   */
   #build(pages: string[], css?: string): void {
+    const prevPage = this.#track ? this.currentPage : 0;
+    const prevTop = this.#pages()[prevPage - 1]?.scrollTop ?? 0;
     const track = document.createElement("div");
     track.className = "zen-track";
     pages.forEach((html, i) => {
@@ -140,6 +150,12 @@ export class ZenSlideViewer extends HTMLElement {
       this.prepend(style);
     }
     this.#track = track;
+    if (prevPage > 1 || prevTop > 0) {
+      const page = Math.min(prevPage, pages.length);
+      track.scrollLeft = (page - 1) * track.clientWidth;
+      const el = this.#pages()[page - 1];
+      if (el) el.scrollTop = prevTop;
+    }
     this.dataset.wired = "";
     this.#wire();
     this.#startAutoplayIfNeeded();
@@ -210,38 +226,119 @@ export class ZenSlideViewer extends HTMLElement {
   }
 
   /**
-   * 指定ページ(1 起点)へ移動し、idx>0 なら該当 heading を軽く強調する。
+   * 指定ページ(1 起点)へ移動し、idx>0 なら該当 heading を画面の上の方へ
+   * スクロールして軽く強調する。
+   *
+   * - `instant`: アニメーションせずに移動する(URL からの復元など)。
+   * - `top`: idx=0 のとき、ページを先頭まで戻す(既定はページ内の位置を保つ)。
    *
    * スクロールはビューア内(横 = track、縦 = ページ)だけで行う。
    * `scrollIntoView` は window まで動かすので、ビューアを長いページの一部に
    * 埋め込んだとき(ランディングの phone モック等)に読者のスクロール位置を
    * 奪ってしまう。
    */
-  focusOn(page: number, idx = 0): void {
+  focusOn(
+    page: number,
+    idx = 0,
+    opts: { instant?: boolean; top?: boolean } = {},
+  ): void {
     const pages = this.#pages();
     const target = pages[page - 1];
     const track = this.#track;
     if (!target || !track) return;
+    const behavior: ScrollBehavior = opts.instant ? "instant" : "smooth";
     const left = track.scrollLeft +
       (target.getBoundingClientRect().left -
         track.getBoundingClientRect().left);
-    track.scrollTo({ left, behavior: "smooth" });
-    if (idx > 0) {
-      const heading = target.querySelector<HTMLElement>(`[data-idx="${idx}"]`);
-      if (heading) {
-        // heading をページ(縦スクロール枠)の中央へ。
-        const top = target.scrollTop +
-          (heading.getBoundingClientRect().top -
-            target.getBoundingClientRect().top) -
-          (target.clientHeight - heading.offsetHeight) / 2;
-        target.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
-        heading.classList.add("zen-focus");
-        globalThis.setTimeout(
-          () => heading.classList.remove("zen-focus"),
-          1200,
-        );
-      }
+    track.scrollTo({ left, behavior });
+    if (idx === 0) {
+      if (opts.top) target.scrollTo({ top: 0, behavior });
+      return;
     }
+    const heading = target.querySelector<HTMLElement>(`[data-idx="${idx}"]`);
+    if (!heading) return;
+    const top = target.scrollTop + this.#relTop(target, heading) -
+      target.clientHeight * HEADING_OFFSET;
+    target.scrollTo({ top: Math.max(0, top), behavior });
+    heading.classList.add("zen-focus");
+    globalThis.setTimeout(() => heading.classList.remove("zen-focus"), 1200);
+  }
+
+  /**
+   * いま見ている位置(ページと、そのページで読んでいる見出し)。見出しは
+   * 画面上部の基準線より上にある最後のもの(ページの末尾まで来ていれば、
+   * 見えている最後のもの)。ページ先頭にいるときは idx 0。
+   */
+  get currentFocus(): { page: number; idx: number } {
+    const page = this.currentPage;
+    const el = this.#pages()[page - 1];
+    if (!el || el.scrollTop <= 2) return { page, idx: 0 };
+    const h = this.#headings(el)[this.#currentHeading(el)];
+    return { page, idx: h ? Number(h.dataset.idx) : 0 };
+  }
+
+  /** ページが末尾までスクロールされているか。 */
+  #atBottom(page: HTMLElement): boolean {
+    return page.scrollTop + page.clientHeight >= page.scrollHeight - 2;
+  }
+
+  /** いま読んでいる見出しの添字(#headings の中の位置、無ければ -1)。 */
+  #currentHeading(page: HTMLElement): number {
+    const line = this.#atBottom(page)
+      ? page.clientHeight - 1 // 末尾では見えている最後の見出し
+      : page.clientHeight * CURRENT_LINE + 1;
+    let cur = -1;
+    this.#headings(page).forEach((h, i) => {
+      if (this.#relTop(page, h) <= line) cur = i;
+    });
+    return cur;
+  }
+
+  /** ページ内の見出し(data-idx 順)。 */
+  #headings(page: HTMLElement): HTMLElement[] {
+    return Array.from(page.querySelectorAll<HTMLElement>("[data-idx]"));
+  }
+
+  /** ページの表示枠の上端から見た要素の位置(px)。 */
+  #relTop(page: HTMLElement, el: HTMLElement): number {
+    return el.getBoundingClientRect().top - page.getBoundingClientRect().top;
+  }
+
+  /** ユーザー操作で focus を変え、`zen-focus` を出す(presenter が配信する)。 */
+  #userFocus(page: number, idx: number): void {
+    this.#stopAutoplay();
+    this.#follow = false;
+    this.focusOn(page, idx, { top: true });
+    this.dispatchEvent(
+      new CustomEvent("zen-focus", { detail: { page, idx }, bubbles: true }),
+    );
+  }
+
+  /**
+   * ↓: 次の見出し(focus したときに置かれる位置より下にある最初の見出し)へ。
+   *    ページの末尾まで来ていれば次のページへ。
+   * ↑: 前の見出し(その位置より上にある最後の見出し。途中まで読んでいれば
+   *    今の見出しの頭)へ。無ければページ先頭、先頭なら前のページへ。
+   */
+  #jumpHeading(dir: 1 | -1): void {
+    const page = this.currentPage;
+    const el = this.#pages()[page - 1];
+    if (!el) return;
+    const spot = el.clientHeight * HEADING_OFFSET;
+    const headings = this.#headings(el);
+    if (dir === 1) {
+      const next = this.#atBottom(el)
+        ? undefined
+        : headings.find((h) => this.#relTop(el, h) > spot + 2);
+      if (next) this.#userFocus(page, Number(next.dataset.idx));
+      else if (page < this.#pages().length) this.#userFocus(page + 1, 0);
+      return;
+    }
+    const prev = headings.findLast((h) => this.#relTop(el, h) < spot - 2);
+    if (prev && el.scrollTop > 2) {
+      this.#userFocus(page, Number(prev.dataset.idx));
+    } else if (el.scrollTop > 2) this.#userFocus(page, 0);
+    else if (page > 1) this.#userFocus(page - 1, 0);
   }
 
   /** 現在表示中のページ番号(1 起点)。 */
@@ -264,7 +361,8 @@ export class ZenSlideViewer extends HTMLElement {
   }
 
   /**
-   * 上下系のキーで今のページを縦スクロールする。フォーカスはビューア自身に
+   * PageUp/PageDown/Space/Home/End で今のページを縦スクロールする
+   * (↑ ↓ は見出しジャンプ)。フォーカスはビューア自身に
    * あり、スクロールするのは中のページなので、ブラウザ標準のキー操作では
    * 動かない。処理したら true。
    */
@@ -275,12 +373,6 @@ export class ZenSlideViewer extends HTMLElement {
     const screen = page.clientHeight * 0.85;
     let top: number;
     switch (e.key) {
-      case "ArrowDown":
-        top = page.scrollTop + 64;
-        break;
-      case "ArrowUp":
-        top = page.scrollTop - 64;
-        break;
       case "PageDown":
         top = page.scrollTop + screen;
         break;
@@ -337,7 +429,13 @@ export class ZenSlideViewer extends HTMLElement {
     this.addEventListener("keydown", (e) => {
       if (e.key === "ArrowRight") this.#go(1);
       else if (e.key === "ArrowLeft") this.#go(-1);
-      else if (this.#scrollByKey(e)) e.preventDefault();
+      else if (
+        (e.key === "ArrowDown" || e.key === "ArrowUp") &&
+        !(e.altKey || e.ctrlKey || e.metaKey || e.shiftKey)
+      ) {
+        e.preventDefault();
+        this.#jumpHeading(e.key === "ArrowDown" ? 1 : -1);
+      } else if (this.#scrollByKey(e)) e.preventDefault();
     });
     this.tabIndex = 0;
 

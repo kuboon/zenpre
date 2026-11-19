@@ -8,7 +8,7 @@
  *
  * 記録するもの:
  * - ページ送り(← → / スワイプ)→ `focus(page, 0)`
- * - 見出しのタップ → `focus(page, idx)`
+ * - 見出しのタップ・↑ ↓ の見出しジャンプ → `focus(page, idx)`
  * - 録画バーのリアクションボタン → `reaction(emoji)`
  *
  * 流れ: 録画 → (3 秒カウントダウン)→ 操作 → 停止 → 確認再生 /
@@ -88,6 +88,15 @@ export function setupRecording(opts: RecordingOptions): { refresh(): void } {
     const { page } = (e as CustomEvent<{ page: number }>).detail;
     if (recorder && page !== last.page) {
       record({ type: "focus", page, idx: 0 });
+    }
+  });
+
+  // ↑ ↓ の見出しジャンプ → focus(page, idx)
+  viewer.addEventListener("zen-focus", (e) => {
+    const { page, idx } = (e as CustomEvent<{ page: number; idx: number }>)
+      .detail;
+    if (recorder && (page !== last.page || idx !== last.idx)) {
+      record({ type: "focus", page, idx });
     }
   });
 
